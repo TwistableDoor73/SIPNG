@@ -108,6 +108,57 @@ export class App {
     return this.allTickets().filter(t => t.groupId === group.id);
   });
 
+  // --- List View State ---
+  currentView = signal<'kanban' | 'list'>('kanban');
+  filterStatus = signal<string>('');
+  filterPriority = signal<string>('');
+  filterAssignee = signal<string>('');
+  sortField = signal<keyof Ticket>('createdAt');
+  sortAscending = signal<boolean>(false);
+
+  filteredGroupTickets = computed(() => {
+    let tickets = [...this.groupTickets()];
+
+    // Filtering
+    const status = this.filterStatus();
+    if (status) tickets = tickets.filter(t => t.status === status);
+
+    const priority = this.filterPriority();
+    if (priority) tickets = tickets.filter(t => t.priority === priority);
+
+    const assignee = this.filterAssignee();
+    if (assignee) tickets = tickets.filter(t => t.assignedTo.toLowerCase().includes(assignee.toLowerCase()));
+
+    // Sorting
+    const field = this.sortField();
+    const isAsc = this.sortAscending();
+
+    tickets.sort((a: any, b: any) => {
+      let valA = a[field];
+      let valB = b[field];
+
+      if (valA instanceof Date) valA = valA.getTime();
+      if (valB instanceof Date) valB = valB.getTime();
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return isAsc ? -1 : 1;
+      if (valA > valB) return isAsc ? 1 : -1;
+      return 0;
+    });
+
+    return tickets;
+  });
+
+  toggleSort(field: keyof Ticket) {
+    if (this.sortField() === field) {
+      this.sortAscending.set(!this.sortAscending());
+    } else {
+      this.sortField.set(field);
+      this.sortAscending.set(true);
+    }
+  }
+
   pendingTickets = computed(() => this.groupTickets().filter(t => t.status === 'Pendiente'));
   inProgressTickets = computed(() => this.groupTickets().filter(t => t.status === 'En Progreso'));
   reviewTickets = computed(() => this.groupTickets().filter(t => t.status === 'Revisión'));

@@ -83,24 +83,33 @@
       <!-- Kanban Dashboard Section Replacing Chat -->
       <p-card styleClass="glass-card main-workspace-card kanban-card">
         <div class="kanban-header">
-          <div>
+          <div class="header-left">
             <h3>Vista General de Tickets</h3>
             <div class="ticket-summaries">
-              <span class="summary-badge pending"><i class="pi pi-clock"></i> {{pendingTickets().length}}
-                Pendientes</span>
-              <span class="summary-badge in-progress"><i class="pi pi-spinner"></i> {{inProgressTickets().length}} En
-                Progreso</span>
+              <span class="summary-badge pending"><i class="pi pi-clock"></i> {{pendingTickets().length}} Pendientes</span>
+              <span class="summary-badge in-progress"><i class="pi pi-spinner"></i> {{inProgressTickets().length}} En Progreso</span>
               <span class="summary-badge review"><i class="pi pi-eye"></i> {{reviewTickets().length}} Revisión</span>
               <span class="summary-badge done"><i class="pi pi-check"></i> {{doneTickets().length}} Hechos</span>
             </div>
           </div>
-          @if (hasPermission('create_ticket')) {
-          <p-button label="Crear Ticket" icon="pi pi-plus" (onClick)="createNewTicket()"
-            [style.backgroundColor]="selectedGroup()!.color" [style.borderColor]="selectedGroup()!.color"></p-button>
-          }
+          <div class="header-right">
+            <div class="view-toggle">
+              <button class="toggle-btn" [class.active]="currentView() === 'kanban'" (click)="currentView.set('kanban')">
+                <i class="pi pi-th-large"></i> Tablero
+              </button>
+              <button class="toggle-btn" [class.active]="currentView() === 'list'" (click)="currentView.set('list')">
+                <i class="pi pi-list"></i> Lista
+              </button>
+            </div>
+            @if (hasPermission('create_ticket')) {
+            <p-button label="Crear Ticket" icon="pi pi-plus" (onClick)="createNewTicket()"
+              [style.backgroundColor]="selectedGroup()!.color" [style.borderColor]="selectedGroup()!.color"></p-button>
+            }
+          </div>
         </div>
 
-        <div class="kanban-layout mt-4">
+        @if (currentView() === 'kanban') {
+        <div class="kanban-layout mt-4 animate-in">
           <!-- Right Sidebar: Mis Tickets Recientes (Mini-list) -->
           <div class="recent-tickets-panel">
             <h4 class="mb-3">Mis Tickets Recientes</h4>
@@ -210,6 +219,69 @@
 
           </div>
         </div>
+        } @else {
+        <!-- LIST VIEW -->
+        <div class="list-layout mt-4 animate-in">
+          <div class="table-container">
+            <table class="ticket-table">
+              <thead>
+                <!-- Filters Row -->
+                <tr class="filter-row">
+                  <th colspan="2"></th>
+                  <th>
+                    <input pInputText type="text" placeholder="St..." [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)" class="table-filter" />
+                  </th>
+                  <th>
+                    <input pInputText type="text" placeholder="Asignado..." [ngModel]="filterAssignee()" (ngModelChange)="filterAssignee.set($event)" class="table-filter" />
+                  </th>
+                  <th>
+                    <input pInputText type="text" placeholder="Pr..." [ngModel]="filterPriority()" (ngModelChange)="filterPriority.set($event)" class="table-filter" />
+                  </th>
+                  <th></th>
+                </tr>
+                <!-- Headers Row -->
+                <tr>
+                  <th (click)="toggleSort('id')" class="sortable">
+                    ID <i class="pi" [ngClass]="{'pi-sort-alt': sortField() !== 'id', 'pi-sort-amount-up-alt': sortField() === 'id' && sortAscending(), 'pi-sort-amount-down': sortField() === 'id' && !sortAscending()}"></i>
+                  </th>
+                  <th (click)="toggleSort('title')" class="sortable">
+                    Título <i class="pi" [ngClass]="{'pi-sort-alt': sortField() !== 'title', 'pi-sort-amount-up-alt': sortField() === 'title' && sortAscending(), 'pi-sort-amount-down': sortField() === 'title' && !sortAscending()}"></i>
+                  </th>
+                  <th (click)="toggleSort('status')" class="sortable">
+                    Estado <i class="pi" [ngClass]="{'pi-sort-alt': sortField() !== 'status', 'pi-sort-amount-up-alt': sortField() === 'status' && sortAscending(), 'pi-sort-amount-down': sortField() === 'status' && !sortAscending()}"></i>
+                  </th>
+                  <th (click)="toggleSort('assignedTo')" class="sortable">
+                    Asignado A <i class="pi" [ngClass]="{'pi-sort-alt': sortField() !== 'assignedTo', 'pi-sort-amount-up-alt': sortField() === 'assignedTo' && sortAscending(), 'pi-sort-amount-down': sortField() === 'assignedTo' && !sortAscending()}"></i>
+                  </th>
+                  <th (click)="toggleSort('priority')" class="sortable">
+                    Prioridad <i class="pi" [ngClass]="{'pi-sort-alt': sortField() !== 'priority', 'pi-sort-amount-up-alt': sortField() === 'priority' && sortAscending(), 'pi-sort-amount-down': sortField() === 'priority' && !sortAscending()}"></i>
+                  </th>
+                  <th (click)="toggleSort('dueDate')" class="sortable">
+                    Fecha <i class="pi" [ngClass]="{'pi-sort-alt': sortField() !== 'dueDate', 'pi-sort-amount-up-alt': sortField() === 'dueDate' && sortAscending(), 'pi-sort-amount-down': sortField() === 'dueDate' && !sortAscending()}"></i>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (filteredGroupTickets().length === 0) {
+                  <tr>
+                    <td colspan="6" class="text-center p-4">No se encontraron tickets con esos filtros.</td>
+                  </tr>
+                }
+                @for (ticket of filteredGroupTickets(); track ticket.id) {
+                <tr class="table-row cursor-pointer" (click)="openTicketDetails(ticket)">
+                  <td><strong>{{ticket.id}}</strong></td>
+                  <td>{{ticket.title}}</td>
+                  <td><span class="status-indicator {{'status-' + ticket.status.toLowerCase().replace(' ', '-')}}">{{ticket.status}}</span></td>
+                  <td>{{ticket.assignedTo}}</td>
+                  <td><span class="ticket-priority badge-{{ticket.priority.toLowerCase()}}">{{ticket.priority}}</span></td>
+                  <td>{{ticket.dueDate | date:'shortDate'}}</td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        }
       </p-card>
     </div>
 
