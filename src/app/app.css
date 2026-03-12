@@ -233,19 +233,7 @@ body {
     line-height: 1.5;
 }
 
-.model-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 2rem;
-    background: rgba(0, 0, 0, 0.3);
-    font-size: 0.75rem;
-    font-weight: 600;
-    width: max-content;
-    color: var(--text-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
+/* --- GROUPS DASHBOARD CARDS --- */
 
 .cursor-pointer {
     cursor: pointer !important;
@@ -338,18 +326,7 @@ body {
     padding: 1.5rem 1.5rem 0 1.5rem;
 }
 
-.llm-indicator-small {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 2rem;
-    border: 1px solid;
-    font-size: 0.8rem;
-    font-weight: 600;
-    width: max-content;
-    background: color-mix(in srgb, currentColor 10%, transparent);
-}
+/* --- KANBAN HEADER --- */
 
 .kanban-header h3 {
     font-size: 1.5rem;
@@ -626,9 +603,121 @@ body {
     color: #fca5a5;
 }
 
-/* --- TICKET DETAILS DIALOG --- */
+/* --- TICKET DETAILS DIALOG (Advanced) --- */
+.ticket-dialog-grid {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 2rem;
+}
+
 .ticket-details-form {
-    padding: 1rem 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ticket-activity-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 2rem;
+}
+
+.metadata-row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.readonly-value {
+    padding: 0.75rem;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    color: var(--text-primary);
+}
+
+.description-text {
+    min-height: 100px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.status-badge,
+.ticket-priority {
+    display: inline-flex;
+    justify-content: center;
+    width: max-content;
+}
+
+.border-top {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1rem;
+}
+
+.comments-list,
+.history-list {
+    max-height: 250px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-right: 0.5rem;
+}
+
+.comment-item {
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.comment-header strong {
+    color: var(--p-primary-color);
+    font-size: 0.85rem;
+}
+
+.comment-header small,
+.history-item small {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.comment-body {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.history-item {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    font-size: 0.85rem;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Scrollbar styling for these internal lists */
+.comments-list::-webkit-scrollbar,
+.history-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.comments-list::-webkit-scrollbar-thumb,
+.history-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }
 
 .grid-form {
@@ -655,7 +744,7 @@ select.p-inputtext.w-full option {
     color: #fff;
 }
 
-::ng-deep .p-dialog {
+::ng-deep .ticket-dialog {
     background: rgba(30, 41, 59, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -663,18 +752,18 @@ select.p-inputtext.w-full option {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-::ng-deep .p-dialog-header {
+::ng-deep .ticket-dialog .p-dialog-header {
     background: transparent !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     padding: 1.5rem !important;
 }
 
-::ng-deep .p-dialog-content {
+::ng-deep .ticket-dialog .p-dialog-content {
     background: transparent !important;
     padding: 1.5rem !important;
 }
 
-::ng-deep .p-dialog-footer {
+::ng-deep .ticket-dialog .p-dialog-footer {
     background: transparent !important;
     border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
     padding: 1.25rem 1.5rem !important;
@@ -692,5 +781,16 @@ select.p-inputtext.w-full option {
 
     .grid-form {
         grid-template-columns: 1fr;
+    }
+
+    .ticket-dialog-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ticket-activity-panel {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 2rem;
     }
 }

@@ -13,22 +13,37 @@ interface Group {
   name: string;
   description: string;
   color: string;
-  llmModel: string;
   icon: string;
 }
 
 export type TicketStatus = 'Pendiente' | 'En Progreso' | 'Revisión' | 'Hecho';
 export type TicketPriority = 'Baja' | 'Media' | 'Alta';
 
+export interface TicketComment {
+  author: string;
+  text: string;
+  date: Date;
+}
+
+export interface TicketHistory {
+  author: string;
+  action: string;
+  date: Date;
+}
+
 export interface Ticket {
   id: string;
   title: string;
+  description: string;
   status: TicketStatus;
+  creator: string;
   assignedTo: string;
   groupId: string;
   priority: TicketPriority;
   dueDate: Date;
   createdAt: Date;
+  comments: TicketComment[];
+  history: TicketHistory[];
 }
 
 @Component({
@@ -61,17 +76,17 @@ export class App {
   }
 
   groups: Group[] = [
-    { id: '1', name: 'Equipo Dev', description: 'Desarrollo, análisis de código y arquitectura.', color: '#0ea5e9', llmModel: 'OpenAI GPT-4o', icon: 'pi-code' },
-    { id: '2', name: 'Soporte', description: 'Sistema de atención y resolución de dudas.', color: '#10b981', llmModel: 'Claude 3.5 Sonnet', icon: 'pi-headphones' },
-    { id: '3', name: 'UX & Diseño', description: 'Diseño de interfaces e ideación.', color: '#ec4899', llmModel: 'Google Gemini 1.5 Pro', icon: 'pi-palette' }
+    { id: '1', name: 'Equipo Dev', description: 'Desarrollo, análisis de código y arquitectura.', color: '#0ea5e9', icon: 'pi-code' },
+    { id: '2', name: 'Soporte', description: 'Sistema de atención y resolución de dudas.', color: '#10b981', icon: 'pi-headphones' },
+    { id: '3', name: 'UX & Diseño', description: 'Diseño de interfaces e ideación.', color: '#ec4899', icon: 'pi-palette' }
   ];
 
   allTickets: WritableSignal<Ticket[]> = signal([
-    { id: 'T-01', title: 'Corregir bug de login', status: 'En Progreso', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Media', dueDate: new Date(2026, 3, 10), createdAt: new Date() },
-    { id: 'T-02', title: 'Actualizar dependencias', status: 'Hecho', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Baja', dueDate: new Date(2026, 3, 5), createdAt: new Date() },
-    { id: 'T-03', title: 'Implementar oAuth', status: 'Pendiente', assignedTo: 'dev2@ejemplo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 15), createdAt: new Date() },
-    { id: 'T-04', title: 'Error en despliegue', status: 'Revisión', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 12), createdAt: new Date() },
-    { id: 'T-05', title: 'Revisar tickets atrasados', status: 'Pendiente', assignedTo: 'soporte1@ejemplo.com', groupId: '2', priority: 'Media', dueDate: new Date(2026, 3, 20), createdAt: new Date() }
+    { id: 'T-01', title: 'Corregir bug de login', description: 'El usuario no puede pasar de la pantalla de inicio si su password tiene caracteres especiales.', status: 'En Progreso', creator: 'dev1@ejemplo.com', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Media', dueDate: new Date(2026, 3, 10), createdAt: new Date(2026, 3, 1), comments: [], history: [] },
+    { id: 'T-02', title: 'Actualizar dependencias', description: 'Subir versión de Node y Angular.', status: 'Hecho', creator: 'admin@ejemplo.com', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Baja', dueDate: new Date(2026, 3, 5), createdAt: new Date(2026, 2, 28), comments: [], history: [] },
+    { id: 'T-03', title: 'Implementar oAuth', description: 'Integrar login con Google Workspace.', status: 'Pendiente', creator: 'admin@ejemplo.com', assignedTo: 'dev2@ejemplo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 15), createdAt: new Date(2026, 3, 2), comments: [], history: [] },
+    { id: 'T-04', title: 'Error en despliegue', description: 'Pipeline fallando en la etapa de build.', status: 'Revisión', creator: 'usuario@ejemplo.com', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 12), createdAt: new Date(2026, 3, 5), comments: [], history: [] },
+    { id: 'T-05', title: 'Revisar tickets atrasados', description: 'Hacer una limpieza de los tickets sin atención.', status: 'Pendiente', creator: 'manager@ejemplo.com', assignedTo: 'soporte1@ejemplo.com', groupId: '2', priority: 'Media', dueDate: new Date(2026, 3, 20), createdAt: new Date(2026, 3, 10), comments: [], history: [] }
   ]);
 
   // Drag and Drop state
@@ -80,6 +95,7 @@ export class App {
   // Modal State
   displayTicketDialog = signal(false);
   selectedTicket = signal<Ticket | null>(null);
+  newCommentText = signal('');
 
   // Options for dropdowns
   statusOptions = ['Pendiente', 'En Progreso', 'Revisión', 'Hecho'];
@@ -136,7 +152,18 @@ export class App {
     if (ticket && ticket.status !== newStatus) {
       // Find and update the ticket in the allTickets array
       this.allTickets.update(tickets =>
-        tickets.map(t => t.id === ticket.id ? { ...t, status: newStatus } : t)
+        tickets.map(t => {
+          if (t.id === ticket.id) {
+            const updatedTicket = { ...t, status: newStatus };
+            updatedTicket.history = [...updatedTicket.history, {
+              author: this.email(),
+              action: `Cambió el estado a ${newStatus}`,
+              date: new Date()
+            }];
+            return updatedTicket;
+          }
+          return t;
+        })
       );
     }
     this.currentDraggedTicket.set(null);
@@ -160,13 +187,58 @@ export class App {
     }
   }
 
+  canEditFullTicket(ticket: Ticket | null): boolean {
+    return ticket !== null && ticket.creator === this.email();
+  }
+
+  canEditStatus(ticket: Ticket | null): boolean {
+    return ticket !== null && (ticket.creator === this.email() || ticket.assignedTo === this.email());
+  }
+
   saveTicketDetails() {
     const updated = this.selectedTicket();
     if (updated) {
       this.allTickets.update(tickets =>
-        tickets.map(t => t.id === updated.id ? updated : t)
+        tickets.map(t => {
+          if (t.id === updated.id) {
+            // Document basic changes in history if needed 
+            // Here we assume changes happen and rely on the full save
+            // A perfect system would diff each property, we'll keep it simple
+            const changedObj = { ...updated };
+            if (t.status !== updated.status) {
+              changedObj.history = [...changedObj.history, { author: this.email(), action: `Cambió el estado a ${updated.status}`, date: new Date() }];
+            }
+            if (t.priority !== updated.priority) {
+              changedObj.history = [...changedObj.history, { author: this.email(), action: `Cambió la prioridad a ${updated.priority}`, date: new Date() }];
+            }
+            if (t.assignedTo !== updated.assignedTo) {
+              changedObj.history = [...changedObj.history, { author: this.email(), action: `Asignó el ticket a ${updated.assignedTo}`, date: new Date() }];
+            }
+            return changedObj;
+          }
+          return t;
+        })
       );
       this.closeTicketDetails();
+    }
+  }
+
+  addComment() {
+    const text = this.newCommentText().trim();
+    const currentTkt = this.selectedTicket();
+    if (text && currentTkt) {
+      const newComment = {
+        author: this.email(),
+        text: text,
+        date: new Date()
+      };
+      // Optimistically update dialog state
+      this.selectedTicket.set({
+        ...currentTkt,
+        comments: [...currentTkt.comments, newComment]
+      });
+      // Clear input
+      this.newCommentText.set('');
     }
   }
 

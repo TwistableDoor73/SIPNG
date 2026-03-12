@@ -54,10 +54,6 @@
           </div>
           <h3>{{group.name}}</h3>
           <p>{{group.description}}</p>
-          <div class="model-badge">
-            <i class="pi pi-microchip"></i>
-            <span>{{group.llmModel}}</span>
-          </div>
         </div>
       </p-card>
       }
@@ -81,11 +77,6 @@
         </div>
         <div>
           <h2>Espacio: {{selectedGroup()!.name}}</h2>
-          <div class="llm-indicator-small mt-2" [style.color]="selectedGroup()!.color"
-            [style.borderColor]="selectedGroup()!.color">
-            <i class="pi pi-bolt"></i>
-            <span>{{selectedGroup()!.llmModel}} activo</span>
-          </div>
         </div>
       </div>
 
@@ -223,45 +214,139 @@
     </div>
 
     <!-- Ticket Details Dialog -->
-    <p-dialog header="Detalles del Ticket" [modal]="true" [(visible)]="displayTicketDialog" [style]="{width: '50vw'}"
-      [draggable]="false">
+    <p-dialog header="Detalles del Ticket" [modal]="true" [(visible)]="displayTicketDialog" [style]="{width: '70vw'}"
+      [draggable]="false" styleClass="ticket-dialog">
       @if (selectedTicket()) {
-      <div class="ticket-details-form p-fluid">
-        <div class="field mb-4">
-          <label class="font-bold mb-2 block">Título</label>
-          <input pInputText [ngModel]="selectedTicket()!.title"
-            (ngModelChange)="updateSelectedTicket('title', $event)" />
+      <div class="ticket-dialog-grid">
+        <!-- Columna Izquierda: Formularios -->
+        <div class="ticket-details-form p-fluid">
+
+          <div class="field mb-4">
+            <label class="font-bold mb-2 block">Título</label>
+            @if (canEditFullTicket(selectedTicket())) {
+            <input pInputText [ngModel]="selectedTicket()!.title"
+              (ngModelChange)="updateSelectedTicket('title', $event)" />
+            } @else {
+            <div class="readonly-value">{{selectedTicket()!.title}}</div>
+            }
+          </div>
+
+          <div class="field mb-4">
+            <label class="font-bold mb-2 block">Descripción</label>
+            @if (canEditFullTicket(selectedTicket())) {
+            <textarea pInputTextarea rows="4" [ngModel]="selectedTicket()!.description"
+              (ngModelChange)="updateSelectedTicket('description', $event)"
+              style="width: 100%; border-radius: 6px; padding: 0.5rem; background: rgba(15, 23, 42, 0.8); color: white; border: 1px solid rgba(255,255,255,0.2);"></textarea>
+            } @else {
+            <div class="readonly-value description-text">{{selectedTicket()!.description}}</div>
+            }
+          </div>
+
+          <div class="grid-form mb-4">
+            <div class="field">
+              <label class="font-bold mb-2 block">Estado</label>
+              @if (canEditStatus(selectedTicket())) {
+              <select class="w-full p-inputtext" [ngModel]="selectedTicket()!.status"
+                (ngModelChange)="updateSelectedTicket('status', $event)">
+                @for (opt of statusOptions; track opt) {
+                <option [value]="opt">{{opt}}</option>
+                }
+              </select>
+              } @else {
+              <div
+                class="readonly-value status-badge badge-{{selectedTicket()!.status.toLowerCase().replace(' ', '-')}}">
+                {{selectedTicket()!.status}}</div>
+              }
+            </div>
+
+            <div class="field">
+              <label class="font-bold mb-2 block">Prioridad</label>
+              @if (canEditFullTicket(selectedTicket())) {
+              <select class="w-full p-inputtext" [ngModel]="selectedTicket()!.priority"
+                (ngModelChange)="updateSelectedTicket('priority', $event)">
+                @for (opt of priorityOptions; track opt) {
+                <option [value]="opt">{{opt}}</option>
+                }
+              </select>
+              } @else {
+              <div class="readonly-value ticket-priority badge-{{selectedTicket()!.priority.toLowerCase()}}">
+                {{selectedTicket()!.priority}}</div>
+              }
+            </div>
+
+            <div class="field">
+              <label class="font-bold mb-2 block">Asignado A</label>
+              @if (canEditFullTicket(selectedTicket())) {
+              <input pInputText [ngModel]="selectedTicket()!.assignedTo"
+                (ngModelChange)="updateSelectedTicket('assignedTo', $event)" />
+              } @else {
+              <div class="readonly-value">{{selectedTicket()!.assignedTo}}</div>
+              }
+            </div>
+          </div>
+
+          <div class="metadata-row">
+            <small class="text-secondary"><i class="pi pi-user"></i> Creado por:
+              {{selectedTicket()!.creator}}</small><br>
+            <small class="text-secondary"><i class="pi pi-calendar"></i> Creado el: {{selectedTicket()!.createdAt |
+              date:'short'}}</small><br>
+            <small class="text-secondary"><i class="pi pi-flag"></i> Límite: {{selectedTicket()!.dueDate |
+              date:'shortDate'}}</small>
+          </div>
         </div>
-        <div class="grid-form mb-4">
-          <div class="field">
-            <label class="font-bold mb-2 block">Estado</label>
-            <select class="w-full p-inputtext" [ngModel]="selectedTicket()!.status"
-              (ngModelChange)="updateSelectedTicket('status', $event)">
-              @for (opt of statusOptions; track opt) {
-              <option [value]="opt">{{opt}}</option>
+
+        <!-- Columna Derecha: Comentarios & Historial -->
+        <div class="ticket-activity-panel">
+
+          <div class="activity-section">
+            <h4 class="mb-3"><i class="pi pi-comments"></i> Comentarios</h4>
+            <div class="comments-list">
+              @if (selectedTicket()!.comments.length === 0) {
+              <p class="empty-state text-sm">No hay comentarios aún.</p>
               }
-            </select>
-          </div>
-          <div class="field">
-            <label class="font-bold mb-2 block">Prioridad</label>
-            <select class="w-full p-inputtext" [ngModel]="selectedTicket()!.priority"
-              (ngModelChange)="updateSelectedTicket('priority', $event)">
-              @for (opt of priorityOptions; track opt) {
-              <option [value]="opt">{{opt}}</option>
+              @for (comment of selectedTicket()!.comments; track comment.date) {
+              <div class="comment-item">
+                <div class="comment-header">
+                  <strong>{{comment.author}}</strong>
+                  <small>{{comment.date | date:'short'}}</small>
+                </div>
+                <div class="comment-body">{{comment.text}}</div>
+              </div>
               }
-            </select>
+            </div>
+
+            @if (canEditStatus(selectedTicket())) {
+            <div class="add-comment-box mt-3">
+              <input pInputText placeholder="Escribe un comentario y presiona Enter..." class="w-full mb-2"
+                [ngModel]="newCommentText()" (ngModelChange)="newCommentText.set($event)"
+                (keyup.enter)="addComment()" />
+              <p-button label="Comentar" icon="pi pi-send" size="small" (onClick)="addComment()"
+                [disabled]="!newCommentText().trim()"></p-button>
+            </div>
+            }
           </div>
-          <div class="field">
-            <label class="font-bold mb-2 block">Asignado A</label>
-            <input pInputText [ngModel]="selectedTicket()!.assignedTo"
-              (ngModelChange)="updateSelectedTicket('assignedTo', $event)" />
+
+          <div class="activity-section mt-4 border-top">
+            <h4 class="mb-3 mt-3"><i class="pi pi-history"></i> Historial</h4>
+            <div class="history-list">
+              @if (selectedTicket()!.history.length === 0) {
+              <p class="empty-state text-sm">Sin historial reciente.</p>
+              }
+              @for (entry of selectedTicket()!.history; track entry.date) {
+              <div class="history-item">
+                <small class="text-secondary">{{entry.date | date:'short'}}</small>
+                <div><strong>{{entry.author}}</strong> {{entry.action}}</div>
+              </div>
+              }
+            </div>
           </div>
+
         </div>
       </div>
       <ng-template pTemplate="footer">
         <p-button label="Cancelar" icon="pi pi-times" [text]="true" severity="secondary"
           (onClick)="closeTicketDetails()"></p-button>
-        <p-button label="Guardar Cambios" icon="pi pi-check" (onClick)="saveTicketDetails()"></p-button>
+        <p-button label="Guardar Configuración" icon="pi pi-check" (onClick)="saveTicketDetails()"></p-button>
       </ng-template>
       }
     </p-dialog>
