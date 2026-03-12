@@ -449,8 +449,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s;
+    cursor: grab;
+    user-select: none;
+}
+
+.ticket-card:active {
+    cursor: grabbing;
+    opacity: 0.7;
+    transform: scale(0.98);
 }
 
 .ticket-card:hover {
@@ -462,6 +469,10 @@ body {
     border-left-color: #3b82f6;
 }
 
+.ticket-card.review {
+    border-left-color: #a855f7;
+}
+
 .ticket-card.done {
     border-left-color: #10b981;
 }
@@ -470,15 +481,46 @@ body {
     border-left-color: #ef4444;
 }
 
+.ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .ticket-id {
     font-size: 0.75rem;
     color: var(--text-secondary);
     font-weight: 600;
 }
 
+.ticket-priority {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-alta {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+.badge-media {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+}
+
+.badge-baja {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+}
+
 .ticket-title {
     font-weight: 500;
     line-height: 1.4;
+    margin: 0.25rem 0;
 }
 
 .ticket-footer {
@@ -486,14 +528,21 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 0.5rem;
 }
 
-.ticket-assignee {
+.ticket-assignee,
+.ticket-date {
     font-size: 0.75rem;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+.ticket-date i {
+    font-size: 0.7rem;
 }
 
 /* --- RECENT TICKETS PANEL --- */
@@ -561,6 +610,12 @@ body {
     color: #93c5fd;
 }
 
+.status-revisin {
+    background: rgba(168, 85, 247, 0.2);
+    color: #d8b4fe;
+}
+
+/* Purple for revision */
 .status-hecho {
     background: rgba(16, 185, 129, 0.2);
     color: #6ee7b7;
@@ -571,6 +626,60 @@ body {
     color: #fca5a5;
 }
 
+/* --- TICKET DETAILS DIALOG --- */
+.ticket-details-form {
+    padding: 1rem 0;
+}
+
+.grid-form {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+select.p-inputtext.w-full {
+    background-color: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+
+select.p-inputtext.w-full option {
+    background: #1e293b;
+    color: #fff;
+}
+
+::ng-deep .p-dialog {
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+::ng-deep .p-dialog-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 1.5rem !important;
+}
+
+::ng-deep .p-dialog-content {
+    background: transparent !important;
+    padding: 1.5rem !important;
+}
+
+::ng-deep .p-dialog-footer {
+    background: transparent !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 1.25rem 1.5rem !important;
+}
+
 @media screen and (max-width: 1024px) {
     .kanban-layout {
         flex-direction: column;
@@ -579,5 +688,9 @@ body {
     .recent-tickets-panel {
         width: 100%;
         max-width: none;
+    }
+
+    .grid-form {
+        grid-template-columns: 1fr;
     }
 }

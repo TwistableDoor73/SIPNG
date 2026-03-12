@@ -99,9 +99,8 @@
                 Pendientes</span>
               <span class="summary-badge in-progress"><i class="pi pi-spinner"></i> {{inProgressTickets().length}} En
                 Progreso</span>
+              <span class="summary-badge review"><i class="pi pi-eye"></i> {{reviewTickets().length}} Revisión</span>
               <span class="summary-badge done"><i class="pi pi-check"></i> {{doneTickets().length}} Hechos</span>
-              <span class="summary-badge blocked"><i class="pi pi-ban"></i> {{blockedTickets().length}}
-                Bloqueados</span>
             </div>
           </div>
           @if (hasPermission('create_ticket')) {
@@ -131,15 +130,21 @@
           <div class="kanban-board">
 
             <!-- Columna Pendiente -->
-            <div class="kanban-column">
+            <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Pendiente', $event)">
               <div class="column-header">Pendiente ({{pendingTickets().length}})</div>
               <div class="column-content">
                 @for (ticket of pendingTickets(); track ticket.id) {
-                <div class="ticket-card">
-                  <div class="ticket-id">{{ticket.id}}</div>
+                <div class="ticket-card" draggable="true" (dragstart)="onDragStart(ticket)"
+                  (click)="openTicketDetails(ticket)">
+                  <div class="ticket-header">
+                    <span class="ticket-id">{{ticket.id}}</span>
+                    <span class="ticket-priority badge-{{ticket.priority.toLowerCase()}}">{{ticket.priority}}</span>
+                  </div>
                   <div class="ticket-title">{{ticket.title}}</div>
                   <div class="ticket-footer">
                     <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                    <span class="ticket-date"><i class="pi pi-calendar"></i> {{ticket.dueDate |
+                      date:'shortDate'}}</span>
                   </div>
                 </div>
                 }
@@ -147,15 +152,43 @@
             </div>
 
             <!-- Columna En Progreso -->
-            <div class="kanban-column">
+            <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('En Progreso', $event)">
               <div class="column-header">En Progreso ({{inProgressTickets().length}})</div>
               <div class="column-content">
                 @for (ticket of inProgressTickets(); track ticket.id) {
-                <div class="ticket-card in-progress">
-                  <div class="ticket-id">{{ticket.id}}</div>
+                <div class="ticket-card in-progress" draggable="true" (dragstart)="onDragStart(ticket)"
+                  (click)="openTicketDetails(ticket)">
+                  <div class="ticket-header">
+                    <span class="ticket-id">{{ticket.id}}</span>
+                    <span class="ticket-priority badge-{{ticket.priority.toLowerCase()}}">{{ticket.priority}}</span>
+                  </div>
                   <div class="ticket-title">{{ticket.title}}</div>
                   <div class="ticket-footer">
                     <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                    <span class="ticket-date"><i class="pi pi-calendar"></i> {{ticket.dueDate |
+                      date:'shortDate'}}</span>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Columna Revisión -->
+            <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Revisión', $event)">
+              <div class="column-header">Revisión ({{reviewTickets().length}})</div>
+              <div class="column-content">
+                @for (ticket of reviewTickets(); track ticket.id) {
+                <div class="ticket-card review" draggable="true" (dragstart)="onDragStart(ticket)"
+                  (click)="openTicketDetails(ticket)">
+                  <div class="ticket-header">
+                    <span class="ticket-id">{{ticket.id}}</span>
+                    <span class="ticket-priority badge-{{ticket.priority.toLowerCase()}}">{{ticket.priority}}</span>
+                  </div>
+                  <div class="ticket-title">{{ticket.title}}</div>
+                  <div class="ticket-footer">
+                    <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                    <span class="ticket-date"><i class="pi pi-calendar"></i> {{ticket.dueDate |
+                      date:'shortDate'}}</span>
                   </div>
                 </div>
                 }
@@ -163,31 +196,21 @@
             </div>
 
             <!-- Columna Hecho -->
-            <div class="kanban-column">
+            <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Hecho', $event)">
               <div class="column-header">Hecho ({{doneTickets().length}})</div>
               <div class="column-content">
                 @for (ticket of doneTickets(); track ticket.id) {
-                <div class="ticket-card done">
-                  <div class="ticket-id">{{ticket.id}}</div>
-                  <div class="ticket-title">{{ticket.title}}</div>
-                  <div class="ticket-footer">
-                    <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                <div class="ticket-card done" draggable="true" (dragstart)="onDragStart(ticket)"
+                  (click)="openTicketDetails(ticket)">
+                  <div class="ticket-header">
+                    <span class="ticket-id">{{ticket.id}}</span>
+                    <span class="ticket-priority badge-{{ticket.priority.toLowerCase()}}">{{ticket.priority}}</span>
                   </div>
-                </div>
-                }
-              </div>
-            </div>
-
-            <!-- Columna Bloqueado -->
-            <div class="kanban-column">
-              <div class="column-header">Bloqueado ({{blockedTickets().length}})</div>
-              <div class="column-content">
-                @for (ticket of blockedTickets(); track ticket.id) {
-                <div class="ticket-card blocked">
-                  <div class="ticket-id">{{ticket.id}}</div>
                   <div class="ticket-title">{{ticket.title}}</div>
                   <div class="ticket-footer">
                     <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                    <span class="ticket-date"><i class="pi pi-calendar"></i> {{ticket.dueDate |
+                      date:'shortDate'}}</span>
                   </div>
                 </div>
                 }
@@ -198,6 +221,51 @@
         </div>
       </p-card>
     </div>
+
+    <!-- Ticket Details Dialog -->
+    <p-dialog header="Detalles del Ticket" [modal]="true" [(visible)]="displayTicketDialog" [style]="{width: '50vw'}"
+      [draggable]="false">
+      @if (selectedTicket()) {
+      <div class="ticket-details-form p-fluid">
+        <div class="field mb-4">
+          <label class="font-bold mb-2 block">Título</label>
+          <input pInputText [ngModel]="selectedTicket()!.title"
+            (ngModelChange)="updateSelectedTicket('title', $event)" />
+        </div>
+        <div class="grid-form mb-4">
+          <div class="field">
+            <label class="font-bold mb-2 block">Estado</label>
+            <select class="w-full p-inputtext" [ngModel]="selectedTicket()!.status"
+              (ngModelChange)="updateSelectedTicket('status', $event)">
+              @for (opt of statusOptions; track opt) {
+              <option [value]="opt">{{opt}}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="font-bold mb-2 block">Prioridad</label>
+            <select class="w-full p-inputtext" [ngModel]="selectedTicket()!.priority"
+              (ngModelChange)="updateSelectedTicket('priority', $event)">
+              @for (opt of priorityOptions; track opt) {
+              <option [value]="opt">{{opt}}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="font-bold mb-2 block">Asignado A</label>
+            <input pInputText [ngModel]="selectedTicket()!.assignedTo"
+              (ngModelChange)="updateSelectedTicket('assignedTo', $event)" />
+          </div>
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <p-button label="Cancelar" icon="pi pi-times" [text]="true" severity="secondary"
+          (onClick)="closeTicketDetails()"></p-button>
+        <p-button label="Guardar Cambios" icon="pi pi-check" (onClick)="saveTicketDetails()"></p-button>
+      </ng-template>
+      }
+    </p-dialog>
+
   </div>
   }
 </main>

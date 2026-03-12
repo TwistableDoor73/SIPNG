@@ -6,6 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { CardModule } from 'primeng/card';
 import { BadgeModule } from 'primeng/badge';
+import { DialogModule } from 'primeng/dialog';
 
 interface Group {
   id: string;
@@ -16,7 +17,8 @@ interface Group {
   icon: string;
 }
 
-export type TicketStatus = 'Pendiente' | 'En Progreso' | 'Hecho' | 'Bloqueado';
+export type TicketStatus = 'Pendiente' | 'En Progreso' | 'Revisión' | 'Hecho';
+export type TicketPriority = 'Baja' | 'Media' | 'Alta';
 
 export interface Ticket {
   id: string;
@@ -24,6 +26,8 @@ export interface Ticket {
   status: TicketStatus;
   assignedTo: string;
   groupId: string;
+  priority: TicketPriority;
+  dueDate: Date;
   createdAt: Date;
 }
 
@@ -36,7 +40,8 @@ export interface Ticket {
     InputTextModule,
     PasswordModule,
     CardModule,
-    BadgeModule
+    BadgeModule,
+    DialogModule
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -62,12 +67,23 @@ export class App {
   ];
 
   allTickets: WritableSignal<Ticket[]> = signal([
-    { id: 'T-01', title: 'Corregir bug de login', status: 'En Progreso', assignedTo: 'usuario@ejemplo.com', groupId: '1', createdAt: new Date() },
-    { id: 'T-02', title: 'Actualizar dependencias', status: 'Hecho', assignedTo: 'usuario@ejemplo.com', groupId: '1', createdAt: new Date() },
-    { id: 'T-03', title: 'Implementar oAuth', status: 'Pendiente', assignedTo: 'dev2@ejemplo.com', groupId: '1', createdAt: new Date() },
-    { id: 'T-04', title: 'Error en despliegue', status: 'Bloqueado', assignedTo: 'usuario@ejemplo.com', groupId: '1', createdAt: new Date() },
-    { id: 'T-05', title: 'Revisar tickets atrasados', status: 'Pendiente', assignedTo: 'soporte1@ejemplo.com', groupId: '2', createdAt: new Date() }
+    { id: 'T-01', title: 'Corregir bug de login', status: 'En Progreso', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Media', dueDate: new Date(2026, 3, 10), createdAt: new Date() },
+    { id: 'T-02', title: 'Actualizar dependencias', status: 'Hecho', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Baja', dueDate: new Date(2026, 3, 5), createdAt: new Date() },
+    { id: 'T-03', title: 'Implementar oAuth', status: 'Pendiente', assignedTo: 'dev2@ejemplo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 15), createdAt: new Date() },
+    { id: 'T-04', title: 'Error en despliegue', status: 'Revisión', assignedTo: 'usuario@ejemplo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 12), createdAt: new Date() },
+    { id: 'T-05', title: 'Revisar tickets atrasados', status: 'Pendiente', assignedTo: 'soporte1@ejemplo.com', groupId: '2', priority: 'Media', dueDate: new Date(2026, 3, 20), createdAt: new Date() }
   ]);
+
+  // Drag and Drop state
+  currentDraggedTicket = signal<Ticket | null>(null);
+
+  // Modal State
+  displayTicketDialog = signal(false);
+  selectedTicket = signal<Ticket | null>(null);
+
+  // Options for dropdowns
+  statusOptions = ['Pendiente', 'En Progreso', 'Revisión', 'Hecho'];
+  priorityOptions = ['Baja', 'Media', 'Alta'];
 
   // Computed signals for the selected group's tickets
   groupTickets = computed(() => {
@@ -78,8 +94,8 @@ export class App {
 
   pendingTickets = computed(() => this.groupTickets().filter(t => t.status === 'Pendiente'));
   inProgressTickets = computed(() => this.groupTickets().filter(t => t.status === 'En Progreso'));
+  reviewTickets = computed(() => this.groupTickets().filter(t => t.status === 'Revisión'));
   doneTickets = computed(() => this.groupTickets().filter(t => t.status === 'Hecho'));
-  blockedTickets = computed(() => this.groupTickets().filter(t => t.status === 'Bloqueado'));
 
   // Mini-list for user
   myRecentTickets = computed(() => {
@@ -107,5 +123,55 @@ export class App {
 
   createNewTicket() {
     alert("Acción: Crear nuevo ticket (Requiere UI Adicional)");
+  }
+
+  // --- Drag and Drop Logic ---
+  onDragStart(ticket: Ticket) {
+    this.currentDraggedTicket.set(ticket);
+  }
+
+  onDrop(newStatus: TicketStatus, event: DragEvent) {
+    event.preventDefault(); // allow drop
+    const ticket = this.currentDraggedTicket();
+    if (ticket && ticket.status !== newStatus) {
+      // Find and update the ticket in the allTickets array
+      this.allTickets.update(tickets =>
+        tickets.map(t => t.id === ticket.id ? { ...t, status: newStatus } : t)
+      );
+    }
+    this.currentDraggedTicket.set(null);
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault(); // Must be called to allow drop
+  }
+
+  // --- Modal Logic ---
+  openTicketDetails(ticket: Ticket) {
+    // Create a copy so cancel works
+    this.selectedTicket.set({ ...ticket });
+    this.displayTicketDialog.set(true);
+  }
+
+  updateSelectedTicket(field: keyof Ticket, value: any) {
+    const current = this.selectedTicket();
+    if (current) {
+      this.selectedTicket.set({ ...current, [field]: value });
+    }
+  }
+
+  saveTicketDetails() {
+    const updated = this.selectedTicket();
+    if (updated) {
+      this.allTickets.update(tickets =>
+        tickets.map(t => t.id === updated.id ? updated : t)
+      );
+      this.closeTicketDetails();
+    }
+  }
+
+  closeTicketDetails() {
+    this.displayTicketDialog.set(false);
+    this.selectedTicket.set(null);
   }
 }
