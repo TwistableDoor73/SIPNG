@@ -16,6 +16,13 @@ interface Group {
   icon: string;
 }
 
+export interface User {
+  name: string;
+  email: string;
+  role: string;
+  avatarUrl: string;
+}
+
 export type TicketStatus = 'Pendiente' | 'En Progreso' | 'Revisión' | 'Hecho';
 export type TicketPriority = 'Baja' | 'Media' | 'Alta';
 
@@ -67,6 +74,15 @@ export class App {
 
   email = signal('usuario@ejemplo.com');
   password = signal('password123');
+
+  currentUser = signal<User>({
+    name: 'Jesús Bocanegra',
+    email: 'usuario@ejemplo.com',
+    role: 'Desarrollador Senior',
+    avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026024d'
+  });
+
+  showProfile = signal(false);
 
   // Permission system (Mock: assigned to the logged in user)
   userPermissions = signal<string[]>(['create_ticket', 'view_kanban']);
@@ -169,6 +185,17 @@ export class App {
     return this.groupTickets().filter(t => t.assignedTo === this.email()).slice(0, 3);
   });
 
+  // --- Profile View Workload Statistics ---
+  myAllAssignedTickets = computed(() => {
+    // Tickets from ALL groups assigned to this user
+    return this.allTickets().filter(t => t.assignedTo === this.email());
+  });
+
+  myPendingCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'Pendiente').length);
+  myInProgressCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'En Progreso').length);
+  myDoneCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'Hecho').length);
+  myReviewCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'Revisión').length);
+
   login() {
     if (this.email() && this.password()) {
       this.isAuthenticated.set(true);
@@ -182,10 +209,17 @@ export class App {
 
   selectGroup(group: Group) {
     this.selectedGroup.set(group);
+    this.showProfile.set(false); // Ensure profile is closed when jumping to a group
   }
 
   backToGroups() {
     this.selectedGroup.set(null);
+    this.showProfile.set(false);
+  }
+
+  toggleProfile() {
+    // If we're showing the profile, we don't clear selectedGroup so we know where to go back
+    this.showProfile.set(!this.showProfile());
   }
 
   createNewTicket() {

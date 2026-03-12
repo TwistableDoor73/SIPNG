@@ -41,8 +41,12 @@
         <h2>Mis Grupos</h2>
         <p>Selecciona un espacio de trabajo</p>
       </div>
-      <p-button icon="pi pi-sign-out" [text]="true" severity="secondary" [rounded]="true"
-        (onClick)="logout()"></p-button>
+      <div class="user-controls">
+        <button class="avatar-target" (click)="toggleProfile()">
+          <img [src]="currentUser().avatarUrl" alt="Avatar" class="user-avatar" />
+        </button>
+        <p-button icon="pi pi-sign-out" [text]="true" severity="secondary" [rounded]="true" (onClick)="logout()"></p-button>
+      </div>
     </div>
 
     <div class="groups-grid">
@@ -63,15 +67,10 @@
 
   @else {
   <div class="group-dashboard animate-in">
-    <div class="dashboard-nav">
-      <p-button icon="pi pi-arrow-left" [text]="true" label="Volver a Grupos" (onClick)="backToGroups()"></p-button>
-      <div class="user-info">
-        <p-button icon="pi pi-user" [rounded]="true" [text]="true" severity="secondary"></p-button>
-      </div>
-    </div>
-
-    <div class="workspace-area">
-      <div class="workspace-header">
+    <div class="workspace-header">
+      <div class="group-info">
+        <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" [rounded]="true"
+          (onClick)="backToGroups()"></p-button>
         <div class="group-badge" [style.backgroundColor]="selectedGroup()!.color">
           <i class="pi {{selectedGroup()!.icon}} text-white"></i>
         </div>
@@ -79,7 +78,89 @@
           <h2>Espacio: {{selectedGroup()!.name}}</h2>
         </div>
       </div>
+      <div class="user-controls">
+        <button class="avatar-target" (click)="toggleProfile()">
+          <img [src]="currentUser().avatarUrl" alt="Avatar" class="user-avatar" />
+        </button>
+      </div>
+    </div>
 
+    @if (showProfile()) {
+    <!-- USER PROFILE VIEW -->
+    <div class="profile-view animate-in mt-4">
+      <div class="profile-header-card glass-card">
+        <div class="profile-info-banner">
+          <img [src]="currentUser().avatarUrl" alt="Profile" class="profile-large-avatar" />
+          <div class="profile-details">
+            <h2>{{currentUser().name}}</h2>
+            <p><i class="pi pi-envelope"></i> {{currentUser().email}}</p>
+            <p><i class="pi pi-briefcase"></i> {{currentUser().role}}</p>
+          </div>
+          <p-button icon="pi pi-times" label="Cerrar Perfil" severity="secondary" (onClick)="toggleProfile()" styleClass="close-profile-btn"></p-button>
+        </div>
+
+        <div class="profile-stats">
+          <div class="stat-card">
+            <span class="stat-value">{{myAllAssignedTickets().length}}</span>
+            <span class="stat-label">Tickets Asignados</span>
+          </div>
+          <div class="stat-card pending">
+            <span class="stat-value text-orange-400">{{myPendingCount()}}</span>
+            <span class="stat-label">Pendientes</span>
+          </div>
+          <div class="stat-card in-progress">
+            <span class="stat-value text-blue-400">{{myInProgressCount()}}</span>
+            <span class="stat-label">En Progreso</span>
+          </div>
+          <div class="stat-card done">
+            <span class="stat-value text-emerald-400">{{myDoneCount()}}</span>
+            <span class="stat-label">Completados</span>
+          </div>
+        </div>
+      </div>
+
+      <p-card styleClass="glass-card main-workspace-card mt-4">
+        <div class="kanban-header">
+          <h3>Mis Tickets Asignados</h3>
+        </div>
+        <div class="list-layout mt-4">
+          <div class="table-container">
+            <table class="ticket-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Título</th>
+                  <th>Estado</th>
+                  <th>Grupo ID</th>
+                  <th>Prioridad</th>
+                  <th>Fecha Límite</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (myAllAssignedTickets().length === 0) {
+                  <tr>
+                    <td colspan="6" class="text-center p-4">No tienes tickets asignados.</td>
+                  </tr>
+                }
+                @for (ticket of myAllAssignedTickets(); track ticket.id) {
+                <tr class="table-row cursor-pointer" (click)="openTicketDetails(ticket)">
+                  <td><strong>{{ticket.id}}</strong></td>
+                  <td>{{ticket.title}}</td>
+                  <td><span class="status-indicator {{'status-' + ticket.status.toLowerCase().replace(' ', '-')}}">{{ticket.status}}</span></td>
+                  <td>{{ticket.groupId}}</td>
+                  <td><span class="ticket-priority badge-{{ticket.priority.toLowerCase()}}">{{ticket.priority}}</span></td>
+                  <td>{{ticket.dueDate | date:'shortDate'}}</td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </p-card>
+    </div>
+    } @else {
+    <!-- GROUP WORKSPACE (KANBAN/LIST) -->
+    <div class="workspace-content animate-in">
       <!-- Kanban Dashboard Section Replacing Chat -->
       <p-card styleClass="glass-card main-workspace-card kanban-card">
         <div class="kanban-header">
@@ -284,15 +365,14 @@
         }
       </p-card>
     </div>
+    }
+  </div>
+  }
 
-    <!-- Ticket Details Dialog -->
-    <p-dialog header="Detalles del Ticket" [modal]="true" [(visible)]="displayTicketDialog" [style]="{width: '70vw'}"
-      [draggable]="false" styleClass="ticket-dialog">
+    <p-dialog [visible]="displayTicketDialog()" (visibleChange)="displayTicketDialog.set($event)" [modal]="true" [style]="{ width: '60vw', minWidth: '800px' }" header="Detalles del Ticket" styleClass="ticket-dialog" [closable]="true" (onHide)="closeTicketDetails()">
       @if (selectedTicket()) {
       <div class="ticket-dialog-grid">
-        <!-- Columna Izquierda: Formularios -->
-        <div class="ticket-details-form p-fluid">
-
+        <div class="ticket-details-form">
           <div class="field mb-4">
             <label class="font-bold mb-2 block">Título</label>
             @if (canEditFullTicket(selectedTicket())) {
@@ -412,7 +492,6 @@
               }
             </div>
           </div>
-
         </div>
       </div>
       <ng-template pTemplate="footer">
@@ -422,7 +501,4 @@
       </ng-template>
       }
     </p-dialog>
-
-  </div>
-  }
 </main>
