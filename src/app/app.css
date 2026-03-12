@@ -313,83 +313,271 @@ body {
     height: 100%;
 }
 
-.model-display {
+/* Chat styles removed */
+
+/* --- KANBAN SECTION --- */
+.kanban-card {
+    height: calc(100vh - 160px);
+    display: flex;
+    flex-direction: column;
+}
+
+::ng-deep .kanban-card .p-card-body,
+::ng-deep .kanban-card .p-card-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+}
+
+.kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 1.5rem 1.5rem 0 1.5rem;
+}
+
+.llm-indicator-small {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 1.5rem;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    border: 1px solid;
+    font-size: 0.8rem;
+    font-weight: 600;
+    width: max-content;
+    background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
-.model-display h3 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 500;
+.kanban-header h3 {
+    font-size: 1.5rem;
+    margin: 0 0 1rem 0;
+    font-weight: 600;
 }
 
-.llm-indicator {
+.ticket-summaries {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.summary-badge {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     border-radius: 2rem;
-    border: 1px solid;
     font-weight: 600;
-    background: color-mix(in srgb, currentColor 10%, transparent);
-    box-shadow: 0 0 20px color-mix(in srgb, currentColor 20%, transparent);
+    font-size: 0.875rem;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.chat-placeholder {
+.summary-badge.pending i {
+    color: #f59e0b;
+}
+
+.summary-badge.in-progress i {
+    color: #3b82f6;
+}
+
+.summary-badge.done i {
+    color: #10b981;
+}
+
+.summary-badge.blocked i {
+    color: #ef4444;
+}
+
+.kanban-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
     flex: 1;
+    overflow: hidden;
+    padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    flex: 1;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.kanban-column {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-}
-
-.message {
-    padding: 1.25rem;
-    border-radius: 1rem;
-    display: flex;
     gap: 1rem;
-    align-items: flex-start;
-    background: rgba(255, 255, 255, 0.03);
+    min-width: 280px;
+    height: 100%;
+}
+
+.column-header {
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.column-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 0.25rem;
+}
+
+.ticket-card {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #f59e0b;
+    /* Default pending */
+    border-radius: 0.75rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.ticket-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.ticket-card.in-progress {
+    border-left-color: #3b82f6;
+}
+
+.ticket-card.done {
+    border-left-color: #10b981;
+}
+
+.ticket-card.blocked {
+    border-left-color: #ef4444;
+}
+
+.ticket-id {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.ticket-title {
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.ticket-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.ticket-assignee {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* --- RECENT TICKETS PANEL --- */
+.recent-tickets-panel {
+    width: 250px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem;
+}
+
+.empty-state {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.mini-ticket-card {
+    background: rgba(15, 23, 42, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
-.message.system {
-    border-left: 4px solid var(--p-primary-color, #3b82f6);
-}
-
-.message.system i {
-    color: var(--p-primary-color, #3b82f6);
-    font-size: 1.25rem;
-    margin-top: 0.25rem;
-}
-
-.message p {
-    margin: 0;
-    line-height: 1.6;
+.mini-ticket-card strong {
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
-.input-area {
-    margin-top: auto;
+.mini-ticket-card p {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem 0;
 }
 
-.p-inputgroup {
+.status-indicator {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
     border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    display: flex;
+    font-size: 0.7rem;
+    font-weight: 600;
+    width: max-content;
 }
 
-.p-inputgroup input {
-    border: none !important;
-    background: rgba(15, 23, 42, 0.8) !important;
-    border-radius: 1rem 0 0 1rem !important;
-    flex: 1 1 auto;
+.status-pendiente {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
 }
 
-.p-inputgroup .p-button {
-    border-radius: 0 1rem 1rem 0 !important;
+.status-en-progreso {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+}
+
+.status-hecho {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+}
+
+.status-bloqueado {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+@media screen and (max-width: 1024px) {
+    .kanban-layout {
+        flex-direction: column;
+    }
+
+    .recent-tickets-panel {
+        width: 100%;
+        max-width: none;
+    }
 }

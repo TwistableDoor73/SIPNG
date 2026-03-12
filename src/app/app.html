@@ -79,32 +79,121 @@
         <div class="group-badge" [style.backgroundColor]="selectedGroup()!.color">
           <i class="pi {{selectedGroup()!.icon}} text-white"></i>
         </div>
-        <h2>Espacio: {{selectedGroup()!.name}}</h2>
-      </div>
-
-      <p-card styleClass="glass-card main-workspace-card">
-        <div class="model-display">
-          <h3>Modelo LLM Activo</h3>
-          <div class="llm-indicator" [style.color]="selectedGroup()!.color"
+        <div>
+          <h2>Espacio: {{selectedGroup()!.name}}</h2>
+          <div class="llm-indicator-small mt-2" [style.color]="selectedGroup()!.color"
             [style.borderColor]="selectedGroup()!.color">
             <i class="pi pi-bolt"></i>
-            <span>{{selectedGroup()!.llmModel}}</span>
+            <span>{{selectedGroup()!.llmModel}} activo</span>
           </div>
         </div>
+      </div>
 
-        <div class="chat-placeholder">
-          <div class="message system" [style.borderLeftColor]="selectedGroup()!.color">
-            <i class="pi pi-info-circle" [style.color]="selectedGroup()!.color"></i>
-            <p>Iniciando sesión en el entorno de {{selectedGroup()!.name}}. El modelo {{selectedGroup()!.llmModel}} está
-              listo para ayudarte.</p>
+      <!-- Kanban Dashboard Section Replacing Chat -->
+      <p-card styleClass="glass-card main-workspace-card kanban-card">
+        <div class="kanban-header">
+          <div>
+            <h3>Vista General de Tickets</h3>
+            <div class="ticket-summaries">
+              <span class="summary-badge pending"><i class="pi pi-clock"></i> {{pendingTickets().length}}
+                Pendientes</span>
+              <span class="summary-badge in-progress"><i class="pi pi-spinner"></i> {{inProgressTickets().length}} En
+                Progreso</span>
+              <span class="summary-badge done"><i class="pi pi-check"></i> {{doneTickets().length}} Hechos</span>
+              <span class="summary-badge blocked"><i class="pi pi-ban"></i> {{blockedTickets().length}}
+                Bloqueados</span>
+            </div>
+          </div>
+          @if (hasPermission('create_ticket')) {
+          <p-button label="Crear Ticket" icon="pi pi-plus" (onClick)="createNewTicket()"
+            [style.backgroundColor]="selectedGroup()!.color" [style.borderColor]="selectedGroup()!.color"></p-button>
+          }
+        </div>
+
+        <div class="kanban-layout mt-4">
+          <!-- Right Sidebar: Mis Tickets Recientes (Mini-list) -->
+          <div class="recent-tickets-panel">
+            <h4 class="mb-3">Mis Tickets Recientes</h4>
+            @if (myRecentTickets().length === 0) {
+            <p class="empty-state">No tienes tickets asignados.</p>
+            }
+            @for (ticket of myRecentTickets(); track ticket.id) {
+            <div class="mini-ticket-card">
+              <strong>{{ticket.id}}</strong>
+              <p>{{ticket.title}}</p>
+              <span
+                class="status-indicator {{'status-' + ticket.status.toLowerCase().replace(' ', '-')}}">{{ticket.status}}</span>
+            </div>
+            }
           </div>
 
-          <div class="input-area mt-4">
-            <div class="p-inputgroup">
-              <input pInputText placeholder="Escribe tu mensaje o prompt aquí..." />
-              <p-button icon="pi pi-send" [style.backgroundColor]="selectedGroup()!.color"
-                [style.borderColor]="selectedGroup()!.color"></p-button>
+          <!-- Left Area: Kanban Board with 4 columns -->
+          <div class="kanban-board">
+
+            <!-- Columna Pendiente -->
+            <div class="kanban-column">
+              <div class="column-header">Pendiente ({{pendingTickets().length}})</div>
+              <div class="column-content">
+                @for (ticket of pendingTickets(); track ticket.id) {
+                <div class="ticket-card">
+                  <div class="ticket-id">{{ticket.id}}</div>
+                  <div class="ticket-title">{{ticket.title}}</div>
+                  <div class="ticket-footer">
+                    <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                  </div>
+                </div>
+                }
+              </div>
             </div>
+
+            <!-- Columna En Progreso -->
+            <div class="kanban-column">
+              <div class="column-header">En Progreso ({{inProgressTickets().length}})</div>
+              <div class="column-content">
+                @for (ticket of inProgressTickets(); track ticket.id) {
+                <div class="ticket-card in-progress">
+                  <div class="ticket-id">{{ticket.id}}</div>
+                  <div class="ticket-title">{{ticket.title}}</div>
+                  <div class="ticket-footer">
+                    <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Columna Hecho -->
+            <div class="kanban-column">
+              <div class="column-header">Hecho ({{doneTickets().length}})</div>
+              <div class="column-content">
+                @for (ticket of doneTickets(); track ticket.id) {
+                <div class="ticket-card done">
+                  <div class="ticket-id">{{ticket.id}}</div>
+                  <div class="ticket-title">{{ticket.title}}</div>
+                  <div class="ticket-footer">
+                    <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Columna Bloqueado -->
+            <div class="kanban-column">
+              <div class="column-header">Bloqueado ({{blockedTickets().length}})</div>
+              <div class="column-content">
+                @for (ticket of blockedTickets(); track ticket.id) {
+                <div class="ticket-card blocked">
+                  <div class="ticket-id">{{ticket.id}}</div>
+                  <div class="ticket-title">{{ticket.title}}</div>
+                  <div class="ticket-footer">
+                    <span class="ticket-assignee"><i class="pi pi-user"></i> {{ticket.assignedTo}}</span>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+
           </div>
         </div>
       </p-card>
