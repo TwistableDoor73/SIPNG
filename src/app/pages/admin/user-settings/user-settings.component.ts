@@ -17,7 +17,7 @@ import { AppStateService, User } from '../../../services/app-state.service';
            <i class="pi pi-shield text-secondary mr-2"></i> Gestión de Usuarios <br>
            <span class="text-secondary font-normal block mt-2" style="font-size: 0.9rem">Administra usuarios y sus permisos individuales</span>
         </h2>
-        <p-button label="Nuevo usuario" icon="pi pi-user-plus" styleClass="p-button-success" (onClick)="openCreateUserDialog()"></p-button>
+        <p-button *ngIf="state.currentUser().role === 'Superadmin'" label="Nuevo usuario" icon="pi pi-user-plus" styleClass="p-button-success" (onClick)="openCreateUserDialog()"></p-button>
       </div>
 
       <div class="mb-4 px-2">
@@ -63,9 +63,9 @@ import { AppStateService, User } from '../../../services/app-state.service';
               </td>
               <td class="text-center">
                  <div class="flex-row-center justify-content-center gap-3">
-                   <i class="pi pi-pencil text-green-500 cursor-pointer" title="Editar"></i>
-                   <i class="pi pi-key text-yellow-500 cursor-pointer" title="Permisos"></i>
-                   <i class="pi pi-trash text-red-500 cursor-pointer" (click)="removeSystemUser(user.id)" title="Eliminar"></i>
+                   <i *ngIf="state.currentUser().role === 'Superadmin' || state.currentUser().id === user.id" class="pi pi-pencil text-green-500 cursor-pointer" title="Editar" (click)="openEditUserDialog(user)"></i>
+                   <i *ngIf="state.currentUser().role === 'Superadmin'" class="pi pi-key text-yellow-500 cursor-pointer" title="Permisos" (click)="openPermissionsDialog(user)"></i>
+                   <i *ngIf="state.currentUser().role === 'Superadmin'" class="pi pi-trash text-red-500 cursor-pointer" (click)="removeSystemUser(user.id)" title="Eliminar"></i>
                  </div>
               </td>
             </tr>
@@ -75,7 +75,7 @@ import { AppStateService, User } from '../../../services/app-state.service';
       </div>
     </div>
     
-    <p-dialog [visible]="displayUserDialog()" (visibleChange)="displayUserDialog.set($event)" [modal]="true" [style]="{ width: '40vw', minWidth: '400px' }" header="Crear Usuario" styleClass="ticket-dialog" [closable]="true" (onHide)="closeUserDialog()">
+    <p-dialog [visible]="displayUserDialog()" (visibleChange)="displayUserDialog.set($event)" [modal]="true" [style]="{ width: '40vw', minWidth: '400px' }" [header]="isEditingUser() ? 'Editar Usuario' : 'Crear Usuario'" styleClass="ticket-dialog" [closable]="true" (onHide)="closeUserDialog()">
       <div class="form-container">
          <div class="grid formgrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="field">
@@ -83,37 +83,47 @@ import { AppStateService, User } from '../../../services/app-state.service';
                <input pInputText class="w-full custom-input-filled" [(ngModel)]="newUser().name" />
             </div>
             <div class="field">
-               <label class="block mb-2 text-sm text-secondary">Usuario *</label>
-               <input pInputText class="w-full custom-input-filled" />
-            </div>
-            <div class="field">
                <label class="block mb-2 text-sm text-secondary">Email *</label>
                <input pInputText class="w-full custom-input-filled" [(ngModel)]="newUser().email" />
             </div>
-            <div class="field">
+            <div class="field" *ngIf="!isEditingUser()">
                <label class="block mb-2 text-sm text-secondary">Contraseña *</label>
                <span class="p-input-icon-right w-full">
                   <input type="password" pInputText class="w-full custom-input-filled" />
                   <i class="pi pi-eye"></i>
                </span>
             </div>
-            <div class="field">
-               <label class="block mb-2 text-sm text-secondary">Teléfono</label>
-               <input pInputText class="w-full custom-input-filled" />
-            </div>
-            <div class="field">
-               <label class="block mb-2 text-sm text-secondary">Dirección</label>
-               <input pInputText class="w-full custom-input-filled" />
-            </div>
-            <div class="field">
-               <label class="block mb-2 text-sm text-secondary">Fecha de nacimiento</label>
-               <input pInputText class="w-full custom-input-filled" type="date" value="2026-12-03" />
-            </div>
+         </div>
+         <div class="flex-row-center justify-content-end gap-3 mt-5">
+            <button class="p-button-text text-green-500 border-none bg-transparent cursor-pointer font-bold" (click)="closeUserDialog()">Cancelar</button>
+            <p-button [label]="isEditingUser() ? 'Guardar' : 'Crear'" icon="pi pi-check" styleClass="p-button-success" (onClick)="saveUser()"></p-button>
+         </div>
+      </div>
+    </p-dialog>
+
+    <p-dialog [visible]="displayPermissionsDialog()" (visibleChange)="displayPermissionsDialog.set($event)" [modal]="true" [style]="{ width: '400px' }" header="Gestión de Permisos" styleClass="ticket-dialog" [closable]="true" (onHide)="closePermissionsDialog()">
+      <div class="form-container" *ngIf="selectedUserForPermissions()">
+         <div class="mb-4 text-center">
+            <strong style="color: #818cf8; font-size: 1.1rem">{{selectedUserForPermissions()?.name}}</strong><br>
+            <small class="text-secondary">{{selectedUserForPermissions()?.email}}</small>
+         </div>
+         <div class="field mb-3">
+            <label class="block mb-2 text-sm text-secondary">Rol del Sistema</label>
+            <select class="p-inputtext p-component w-full" [(ngModel)]="permissionEditState" (ngModelChange)="onRoleChange($event)">
+              <option value="Usuario">Usuario</option>
+              <option value="Dev">Dev</option>
+              <option value="Admin">Admin</option>
+              <option value="Superadmin">Superadmin</option>
+            </select>
+         </div>
+         <div class="field mb-4">
+            <label class="block mb-2 text-sm text-secondary">Nivel de Permisos (1-18)</label>
+            <input type="number" pInputText class="w-full custom-input-filled" [(ngModel)]="permissionLevelState" min="1" max="18" />
          </div>
          
          <div class="flex-row-center justify-content-end gap-3 mt-5">
-            <button class="p-button-text text-green-500 border-none bg-transparent cursor-pointer font-bold" (click)="closeUserDialog()">Cancelar</button>
-            <p-button label="Crear" icon="pi pi-check" styleClass="p-button-success" (onClick)="saveNewUser()"></p-button>
+            <button class="p-button-text text-green-500 border-none bg-transparent cursor-pointer font-bold" (click)="closePermissionsDialog()">Cancelar</button>
+            <p-button label="Guardar Permisos" icon="pi pi-check" styleClass="p-button-success" (onClick)="savePermissions()"></p-button>
          </div>
       </div>
     </p-dialog>
@@ -123,8 +133,15 @@ export class UserSettingsComponent {
   state = inject(AppStateService);
 
   displayUserDialog = signal(false);
+  isEditingUser = signal(false);
+  displayPermissionsDialog = signal(false);
+  
   newUserSearch = signal('');
   newUser = signal<Partial<User>>({});
+  
+  selectedUserForPermissions = signal<User | null>(null);
+  permissionEditState: string = 'Usuario';
+  permissionLevelState: number = 1;
 
   getGroupName(id: string) {
     const grp = this.state.groups.find(g => g.id === id);
@@ -132,34 +149,83 @@ export class UserSettingsComponent {
   }
 
   openCreateUserDialog() {
+    this.isEditingUser.set(false);
     this.newUser.set({ name: '', email: '', role: 'Usuario', permissions: 1, groups: [] });
     this.displayUserDialog.set(true);
   }
 
-  saveNewUser() {
+  openEditUserDialog(user: User) {
+    this.isEditingUser.set(true);
+    // Clonamos para evitar editar la referencia directa
+    this.newUser.set({ ...user });
+    this.displayUserDialog.set(true);
+  }
+
+  saveUser() {
     const data = this.newUser();
     if (data.name && data.email) {
-      const newU: User = {
-        id: 'U-' + Math.floor(Math.random() * 10000),
-        name: data.name,
-        email: data.email,
-        role: data.role || 'Usuario',
-        permissions: data.permissions || 1,
-        avatarUrl: 'https://i.pravatar.cc/150?u=' + data.email,
-        groups: data.groups || []
-      };
-      this.state.systemUsers.update(users => [...users, newU]);
+      if (this.isEditingUser() && data.id) {
+        // Actualizar
+        this.state.systemUsers.update(users => 
+          users.map(u => u.id === data.id ? { ...u, name: data.name!, email: data.email! } : u)
+        );
+      } else {
+        // Crear
+        const newU: User = {
+          id: 'U-' + Math.floor(Math.random() * 10000),
+          name: data.name,
+          email: data.email,
+          role: data.role || 'Usuario',
+          permissions: data.permissions || 1,
+          avatarUrl: 'https://i.pravatar.cc/150?u=' + data.email,
+          groups: data.groups || []
+        };
+        this.state.systemUsers.update(users => [...users, newU]);
+      }
       this.displayUserDialog.set(false);
     }
   }
 
   closeUserDialog() {
     this.displayUserDialog.set(false);
+    this.isEditingUser.set(false);
+  }
+
+  openPermissionsDialog(user: User) {
+    this.selectedUserForPermissions.set(user);
+    this.permissionEditState = user.role;
+    this.permissionLevelState = user.permissions;
+    this.displayPermissionsDialog.set(true);
+  }
+
+  onRoleChange(newRole: string) {
+    if (newRole === 'Superadmin') this.permissionLevelState = 18;
+    else if (newRole === 'Admin') this.permissionLevelState = 14;
+    else if (newRole === 'Dev') this.permissionLevelState = 8;
+    else if (newRole === 'Usuario') this.permissionLevelState = 6;
+  }
+
+  savePermissions() {
+    const userToEdit = this.selectedUserForPermissions();
+    if (userToEdit) {
+      if (userToEdit.id === this.state.currentUser().id && this.permissionEditState !== 'Superadmin') {
+        alert("Atención: Estás cambiando tu propio rol. Perderás los privilegios de Superadmin al recargar.");
+      }
+      this.state.systemUsers.update(users => 
+        users.map(u => u.id === userToEdit.id ? { ...u, role: this.permissionEditState, permissions: this.permissionLevelState } : u)
+      );
+      this.displayPermissionsDialog.set(false);
+    }
+  }
+
+  closePermissionsDialog() {
+    this.displayPermissionsDialog.set(false);
+    this.selectedUserForPermissions.set(null);
   }
 
   removeSystemUser(userId: string) {
     if (userId === this.state.currentUser().id) {
-      alert('No puedes eliminar tu propio usuario.');
+      alert('No puedes eliminar tu propio usuario Superadmin.');
       return;
     }
     this.state.systemUsers.update(users => users.filter(u => u.id !== userId));
