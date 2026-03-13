@@ -1,4 +1,5 @@
 import { Injectable, signal, computed, WritableSignal } from '@angular/core';
+import { Permission, ALL_PERMISSIONS } from './permission.service';
 
 // --- MODELS ---
 export interface Group {
@@ -15,7 +16,7 @@ export interface User {
   email: string;
   role: string;
   avatarUrl: string;
-  permissions: number;
+  permissions: Permission[];
   groups: string[];
 }
 
@@ -66,16 +67,16 @@ export class AppStateService {
     email: 'jesusefrainbocanegramata@gmail.com',
     role: 'Superadmin',
     avatarUrl: 'https://i.pravatar.cc/150?u=superadmin',
-    permissions: 18,
+    permissions: [...ALL_PERMISSIONS],
     groups: ['1', '2', '3']
   });
 
   // --- SYSTEM DATA (MOCKS) ---
   systemUsers: WritableSignal<User[]> = signal([
     this.currentUser(),
-    { id: 'U-1', name: 'Diego Tristan Limon', email: 'diegotristanlimon@gmail.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin', permissions: 14, groups: ['1', '3'] },
-    { id: 'U-2', name: 'Luis Felipe Montes Velazquez', email: 'luismontesvelazquez@gmail.com', role: 'Usuario', avatarUrl: 'https://i.pravatar.cc/150?u=user', permissions: 6, groups: ['1', '2'] },
-    { id: 'U-3', name: 'Paula Valeria Sanchez Trejo', email: 'paulavaleriasancheztrejo@gmail.com', role: 'Dev', avatarUrl: 'https://i.pravatar.cc/150?u=dev', permissions: 8, groups: ['1', '3'] },
+    { id: 'U-1', name: 'Diego Tristan Limon', email: 'diegotristanlimon@gmail.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin', permissions: ['ticket:create', 'ticket:edit', 'ticket:delete', 'ticket:view', 'ticket:assign', 'ticket:change_status', 'ticket:comment', 'group:view', 'user:create', 'user:edit', 'user:view'], groups: ['1', '3'] },
+    { id: 'U-2', name: 'Luis Felipe Montes Velazquez', email: 'luismontesvelazquez@gmail.com', role: 'Usuario', avatarUrl: 'https://i.pravatar.cc/150?u=user', permissions: ['ticket:view', 'ticket:comment', 'group:view'], groups: ['1', '2'] },
+    { id: 'U-3', name: 'Paula Valeria Sanchez Trejo', email: 'paulavaleriasancheztrejo@gmail.com', role: 'Dev', avatarUrl: 'https://i.pravatar.cc/150?u=dev', permissions: ['ticket:create', 'ticket:edit', 'ticket:view', 'ticket:change_status', 'ticket:comment', 'group:view'], groups: ['1', '3'] },
   ]);
 
   groups: Group[] = [
@@ -121,7 +122,15 @@ export class AppStateService {
   // --- ACTIONS ---
   login() {
     if (this.email() && this.password()) {
-      this.isAuthenticated.set(true);
+      // Find the user by email
+      const foundUser = this.systemUsers().find(u => u.email.toLowerCase() === this.email().toLowerCase());
+      
+      if (foundUser) {
+        this.currentUser.set(foundUser);
+        this.isAuthenticated.set(true);
+      } else {
+        alert('Cuenta no encontrada. Por favor ingresa uno de los correos de prueba.');
+      }
     }
   }
 

@@ -4,12 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
+import { CheckboxModule } from 'primeng/checkbox';
 import { AppStateService, User } from '../../../services/app-state.service';
+import { Permission, ALL_PERMISSIONS } from '../../../services/permission.service';
 
 @Component({
   selector: 'app-user-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, DialogModule],
+  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, DialogModule, CheckboxModule],
   template: `
     <div class="page-wrapper animate-in full-height-view">
       <div class="flex-row-center justify-content-between mb-4 pt-2 px-2">
@@ -53,7 +55,7 @@ import { AppStateService, User } from '../../../services/app-state.service';
                  </div>
               </td>
               <td class="text-secondary text-sm">{{user.email}}</td>
-              <td class="text-center"><span class="badge-rounded-purple">{{user.permissions}} / 18</span></td>
+              <td class="text-center"><span class="badge-rounded-purple">{{user.permissions.length}} permisos</span></td>
               <td>
                  <div class="text-xs text-secondary" style="max-width: 150px; line-height: 1.4">
                    <ng-container *ngFor="let g of user.groups; let last = last">
@@ -117,8 +119,13 @@ import { AppStateService, User } from '../../../services/app-state.service';
             </select>
          </div>
          <div class="field mb-4">
-            <label class="block mb-2 text-sm text-secondary">Nivel de Permisos (1-18)</label>
-            <input type="number" pInputText class="w-full custom-input-filled" [(ngModel)]="permissionLevelState" min="1" max="18" />
+            <label class="block mb-2 text-sm text-secondary">Permisos seleccionados ({{permissionEditStateArray.length}})</label>
+            <div class="flex flex-column gap-2" style="max-height: 200px; overflow-y: auto; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+               <div *ngFor="let perm of allPermissionsList" class="field-checkbox mb-2" style="display: flex; align-items: center;">
+                  <p-checkbox [value]="perm" [(ngModel)]="permissionEditStateArray" [inputId]="perm"></p-checkbox>
+                  <label [for]="perm" class="ml-2 text-sm text-secondary cursor-pointer" style="margin-top: 2px;">{{perm}}</label>
+               </div>
+            </div>
          </div>
          
          <div class="flex-row-center justify-content-end gap-3 mt-5">
@@ -141,7 +148,8 @@ export class UserSettingsComponent {
   
   selectedUserForPermissions = signal<User | null>(null);
   permissionEditState: string = 'Usuario';
-  permissionLevelState: number = 1;
+  permissionEditStateArray: Permission[] = [];
+  allPermissionsList = ALL_PERMISSIONS;
 
   getGroupName(id: string) {
     const grp = this.state.groups.find(g => g.id === id);
@@ -150,7 +158,7 @@ export class UserSettingsComponent {
 
   openCreateUserDialog() {
     this.isEditingUser.set(false);
-    this.newUser.set({ name: '', email: '', role: 'Usuario', permissions: 1, groups: [] });
+    this.newUser.set({ name: '', email: '', role: 'Usuario', permissions: [], groups: [] });
     this.displayUserDialog.set(true);
   }
 
@@ -176,7 +184,7 @@ export class UserSettingsComponent {
           name: data.name,
           email: data.email,
           role: data.role || 'Usuario',
-          permissions: data.permissions || 1,
+          permissions: data.permissions || [],
           avatarUrl: 'https://i.pravatar.cc/150?u=' + data.email,
           groups: data.groups || []
         };
@@ -194,15 +202,15 @@ export class UserSettingsComponent {
   openPermissionsDialog(user: User) {
     this.selectedUserForPermissions.set(user);
     this.permissionEditState = user.role;
-    this.permissionLevelState = user.permissions;
+    this.permissionEditStateArray = [...user.permissions];
     this.displayPermissionsDialog.set(true);
   }
 
   onRoleChange(newRole: string) {
-    if (newRole === 'Superadmin') this.permissionLevelState = 18;
-    else if (newRole === 'Admin') this.permissionLevelState = 14;
-    else if (newRole === 'Dev') this.permissionLevelState = 8;
-    else if (newRole === 'Usuario') this.permissionLevelState = 6;
+    if (newRole === 'Superadmin') this.permissionEditStateArray = [...ALL_PERMISSIONS];
+    else if (newRole === 'Admin') this.permissionEditStateArray = ['ticket:create', 'ticket:edit', 'ticket:delete', 'ticket:view', 'ticket:assign', 'ticket:change_status', 'ticket:comment', 'group:view', 'user:create', 'user:edit', 'user:view'];
+    else if (newRole === 'Dev') this.permissionEditStateArray = ['ticket:create', 'ticket:edit', 'ticket:view', 'ticket:change_status', 'ticket:comment', 'group:view'];
+    else if (newRole === 'Usuario') this.permissionEditStateArray = ['ticket:view', 'ticket:comment', 'group:view'];
   }
 
   savePermissions() {
@@ -212,7 +220,7 @@ export class UserSettingsComponent {
         alert("Atención: Estás cambiando tu propio rol. Perderás los privilegios de Superadmin al recargar.");
       }
       this.state.systemUsers.update(users => 
-        users.map(u => u.id === userToEdit.id ? { ...u, role: this.permissionEditState, permissions: this.permissionLevelState } : u)
+        users.map(u => u.id === userToEdit.id ? { ...u, role: this.permissionEditState, permissions: [...this.permissionEditStateArray] } : u)
       );
       this.displayPermissionsDialog.set(false);
     }

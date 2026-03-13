@@ -43,7 +43,7 @@
       </nav>
       }
 
-      @if (state.currentUser().role === 'Superadmin' || state.currentUser().permissions > 10) {
+      @if (state.currentUser().role === 'Superadmin' || state.currentUser().permissions.includes('user:view')) {
       <div class="nav-section-title mt-4">SISTEMA</div>
       <nav class="sidebar-nav">
         <button class="nav-item user-settings-tab" [class.active]="activeTab === 'user-settings'"
@@ -59,7 +59,7 @@
         <div class="user-avatar-small" [style.backgroundImage]="'url(' + state.currentUser().avatarUrl + ')'"></div>
         <div class="user-info-text">
           <strong>{{state.currentUser().name}}</strong><br>
-          <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions}} permisos</span>
+          <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions.length}} permisos</span>
         </div>
       </div>
       <button class="logout-btn" (click)="logout()" title="Cerrar sesión">

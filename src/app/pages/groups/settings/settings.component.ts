@@ -8,10 +8,10 @@ import { CardModule } from 'primeng/card';
 import { AppStateService } from '../../../services/app-state.service';
 
 @Component({
-  selector: 'app-settings',
-  standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, CardModule],
-  template: `
+   selector: 'app-settings',
+   standalone: true,
+   imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, CardModule],
+   template: `
     <div class="page-wrapper animate-in full-height-view">
       <div class="flex-row-center justify-content-between mb-4 glass-card p-3" style="border-radius: 12px;">
         <h2 class="view-title m-0">
@@ -33,10 +33,6 @@ import { AppStateService } from '../../../services/app-state.service';
             <div class="field mb-3">
                <label class="block mb-2 font-semibold text-sm">Descripción</label>
                <input pInputText class="w-full custom-input-filled" [ngModel]="state.selectedGroup()?.description" disabled />
-            </div>
-            <div class="field mb-4">
-               <label class="block mb-2 font-semibold text-sm">Modelo LLM</label>
-               <input pInputText class="w-full custom-input-filled" [ngModel]="state.selectedGroup()?.llmModel" disabled />
             </div>
             
             <div class="field mb-4">
@@ -84,7 +80,7 @@ import { AppStateService } from '../../../services/app-state.service';
                          </div>
                       </td>
                       <td class="text-secondary text-sm">{{mem.email}}</td>
-                      <td class="text-center"><span class="badge-rounded-light">{{mem.permissions}} permisos</span></td>
+                      <td class="text-center"><span class="badge-rounded-light">{{mem.permissions.length}} permisos</span></td>
                       <td class="text-right">
                          <i class="pi pi-user-minus text-red-500 cursor-pointer" (click)="removeUserFromGroup(mem.id)" title="Eliminar del grupo"></i>
                       </td>
@@ -99,29 +95,29 @@ import { AppStateService } from '../../../services/app-state.service';
   `
 })
 export class SettingsComponent {
-  state = inject(AppStateService);
-  router = inject(Router);
+   state = inject(AppStateService);
+   router = inject(Router);
 
-  updateGroupConfig() {
-    alert('Configuración guardada correctamente.');
-  }
+   updateGroupConfig() {
+      alert('Configuración guardada correctamente.');
+   }
 
-  deleteGroup() {
-    alert('Acción bloqueada: Requiere confirmación del servidor.');
-  }
+   deleteGroup() {
+      alert('Acción bloqueada: Requiere confirmación del servidor.');
+   }
 
-  addUserToGroup() {
-    alert('Esta funcionalidad será adaptada a un modal de búsqueda.');
-  }
+   addUserToGroup() {
+      alert('Esta funcionalidad será adaptada a un modal de búsqueda.');
+   }
 
-  removeUserFromGroup(id: string) {
-    const group = this.state.selectedGroup();
-    if (!group) return;
-    this.state.systemUsers.update(users => users.map(u => {
-      if (u.id === id) {
-        return { ...u, groups: u.groups.filter(gid => gid !== group.id) };
-      }
-      return u;
-    }));
-  }
+   removeUserFromGroup(id: string) {
+      const group = this.state.selectedGroup();
+      if (!group) return;
+      this.state.systemUsers.update(users => users.map(u => {
+         if (u.id === id) {
+            return { ...u, groups: u.groups.filter(gid => gid !== group.id) };
+         }
+         return u;
+      }));
+   }
 }
