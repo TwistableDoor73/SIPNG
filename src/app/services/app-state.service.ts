@@ -18,6 +18,8 @@ export interface User {
   avatarUrl: string;
   permissions: Permission[];
   groups: string[];
+  age?: number;
+  phone?: string;
 }
 
 export type TicketStatus = 'Pendiente' | 'En Progreso' | 'Revisión' | 'Hecho' | 'Bloqueado';
@@ -66,7 +68,7 @@ export class AppStateService {
     name: 'Jesus Efrain Bocanegra Mata',
     email: 'jesusefrainbocanegramata@gmail.com',
     role: 'Superadmin',
-    avatarUrl: 'https://i.pravatar.cc/150?u=superadmin',
+    avatarUrl: 'https://i.pravatar.cc/150?img=67',
     permissions: [...ALL_PERMISSIONS],
     groups: ['1', '2', '3']
   });
@@ -110,6 +112,11 @@ export class AppStateService {
     return this.systemUsers().filter(u => u.groups.includes(group.id));
   });
 
+  myGroups = computed(() => {
+    const userGroups = this.currentUser().groups || [];
+    return this.groups.filter(g => userGroups.includes(g.id));
+  });
+
   myAllAssignedTickets = computed(() => {
     return this.allTickets().filter(t => t.assignedTo === this.currentUser().email);
   });
@@ -124,7 +131,7 @@ export class AppStateService {
     if (this.email() && this.password()) {
       // Find the user by email
       const foundUser = this.systemUsers().find(u => u.email.toLowerCase() === this.email().toLowerCase());
-      
+
       if (foundUser) {
         this.currentUser.set(foundUser);
         this.isAuthenticated.set(true);
@@ -132,6 +139,33 @@ export class AppStateService {
         alert('Cuenta no encontrada. Por favor ingresa uno de los correos de prueba.');
       }
     }
+  }
+
+  register(userData: Partial<User>, password?: string) {
+    const newUser: User = {
+      id: 'U-' + Math.floor(Math.random() * 100000),
+      name: userData.name || '',
+      email: userData.email || '',
+      role: 'Usuario',
+      avatarUrl: 'https://i.pravatar.cc/150?u=' + (userData.email || 'new'),
+      permissions: ['ticket:view', 'ticket:comment', 'group:view'], // Basic permissions by default
+      groups: [],
+      age: userData.age,
+      phone: userData.phone
+    };
+
+    // Check if email already exists
+    if (this.systemUsers().find(u => u.email.toLowerCase() === newUser.email.toLowerCase())) {
+      return false; // Registration failed: Email exists
+    }
+
+    this.systemUsers.update(users => [...users, newUser]);
+    // Optionally automatically log them in:
+    this.email.set(newUser.email);
+    this.password.set(password || '');
+    this.currentUser.set(newUser);
+    this.isAuthenticated.set(true);
+    return true; // Registration successful
   }
 
   logout() {

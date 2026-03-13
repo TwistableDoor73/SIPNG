@@ -15,7 +15,7 @@ import { AppStateService, Group } from '../../../services/app-state.service';
         <p>Selecciona un espacio de trabajo</p>
       </div>
       <div class="groups-grid mt-4">
-        @for (group of state.groups; track group.id) {
+        @for (group of state.myGroups(); track group.id) {
         <p-card styleClass="glass-card group-card cursor-pointer" (click)="onSelectGroup(group)">
           <div class="group-content">
             <div class="group-icon" [style.color]="group.color">
