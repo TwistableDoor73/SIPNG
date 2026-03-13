@@ -19,9 +19,9 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
            Tablero Kanban <span style="color:var(--p-primary-color); font-weight: normal; margin-left: 0.5rem">{{state.selectedGroup()?.name}}</span>
         </h2>
         <div class="flex-row-center gap-2">
-           <p-button label="Mis tickets" [text]="true" size="small" severity="secondary" styleClass="p-button-outlined"></p-button>
-           <p-button label="Sin asignar" [text]="true" size="small" severity="secondary" styleClass="p-button-outlined"></p-button>
-           <p-button label="Alta prioridad" [text]="true" size="small" severity="secondary" styleClass="p-button-outlined"></p-button>
+           <p-button label="Mis tickets" [text]="true" size="small" [severity]="activeFilter() === 'mis_tickets' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'mis_tickets' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('mis_tickets')"></p-button>
+           <p-button label="Sin asignar" [text]="true" size="small" [severity]="activeFilter() === 'sin_asignar' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'sin_asignar' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('sin_asignar')"></p-button>
+           <p-button label="Alta prioridad" [text]="true" size="small" [severity]="activeFilter() === 'alta_prioridad' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'alta_prioridad' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('alta_prioridad')"></p-button>
            <p-button label="Nuevo" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
         </div>
       </div>
@@ -189,10 +189,27 @@ export class KanbanComponent {
   state = inject(AppStateService);
   router = inject(Router);
 
-  pendingTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'Pendiente'));
-  inProgressTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'En Progreso'));
-  reviewTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'Revisión'));
-  doneTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'Hecho'));
+  activeFilter = signal<'mis_tickets' | 'sin_asignar' | 'alta_prioridad' | null>(null);
+
+  filteredTickets = computed(() => {
+    let tickets = this.state.groupTickets();
+    const filter = this.activeFilter();
+    
+    if (filter === 'mis_tickets') {
+      tickets = tickets.filter(t => t.assignedTo === this.state.email());
+    } else if (filter === 'sin_asignar') {
+      tickets = tickets.filter(t => !t.assignedTo || t.assignedTo === 'Sin asignar');
+    } else if (filter === 'alta_prioridad') {
+      tickets = tickets.filter(t => t.priority === 'Alta');
+    }
+    
+    return tickets;
+  });
+
+  pendingTickets = computed(() => this.filteredTickets().filter(t => t.status === 'Pendiente'));
+  inProgressTickets = computed(() => this.filteredTickets().filter(t => t.status === 'En Progreso'));
+  reviewTickets = computed(() => this.filteredTickets().filter(t => t.status === 'Revisión'));
+  doneTickets = computed(() => this.filteredTickets().filter(t => t.status === 'Hecho'));
 
   isCreateTicketDialogVisible = signal(false);
   
@@ -208,6 +225,14 @@ export class KanbanComponent {
   });
 
   currentDraggedTicket = signal<Ticket | null>(null);
+
+  toggleFilter(filter: 'mis_tickets' | 'sin_asignar' | 'alta_prioridad') {
+    if (this.activeFilter() === filter) {
+      this.activeFilter.set(null); // Toggle off
+    } else {
+      this.activeFilter.set(filter); // Toggle on
+    }
+  }
 
   onDragStart(ticket: Ticket) {
     this.currentDraggedTicket.set(ticket);
