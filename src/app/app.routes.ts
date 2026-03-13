@@ -1,3 +1,23 @@
 import { Routes } from '@angular/router';
+import { MainLayoutComponent } from './layout/main-layout/main-layout';
 
-export const routes: Routes = [];
+// Note: Components haven't been created yet, but wiring them up structurally.
+export const routes: Routes = [
+  { path: 'auth/login', loadComponent: () => import('./pages/auth/login/login.component').then(m => m.LoginComponent) },
+  { 
+    path: '', 
+    component: MainLayoutComponent,
+    children: [
+      { path: 'home', loadComponent: () => import('./pages/home/group-selection/group-selection.component').then(m => m.GroupSelectionComponent) },
+      { path: 'user/profile', loadComponent: () => import('./pages/user/profile/profile.component').then(m => m.ProfileComponent) },
+      { path: 'groups/dashboard', loadComponent: () => import('./pages/groups/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+      { path: 'groups/settings', loadComponent: () => import('./pages/groups/settings/settings.component').then(m => m.SettingsComponent) },
+      { path: 'tickets/kanban', loadComponent: () => import('./pages/tickets/kanban/kanban.component').then(m => m.KanbanComponent) },
+      { path: 'tickets/list', loadComponent: () => import('./pages/tickets/list/list.component').then(m => m.ListComponent) },
+      { path: 'admin/user-settings', loadComponent: () => import('./pages/admin/user-settings/user-settings.component').then(m => m.UserSettingsComponent) },
+      
+      { path: '', redirectTo: 'home', pathMatch: 'full' }
+    ]
+  },
+  { path: '**', redirectTo: 'home' }
+];

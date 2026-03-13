@@ -1,0 +1,75 @@
+<div class="app-layout"
+  [style.--group-color]="state.selectedGroup() ? state.selectedGroup()!.color : 'rgba(99, 102, 241, 0.4)'">
+  <div class="dynamic-background"></div>
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar glass-panel">
+    <div class="sidebar-header">
+      <h1 class="brand-logo">SIPNG</h1>
+    </div>
+
+    <div class="sidebar-scrollable">
+      <div class="nav-section-title">GENERAL</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item" [class.active]="activeTab === 'home'" (click)="backToGroups()">
+          <i class="pi pi-th-large"></i> Grupos
+        </button>
+        <button class="nav-item" [class.active]="activeTab === 'profile'" (click)="toggleProfile()">
+          <i class="pi pi-user"></i> Perfil
+        </button>
+      </nav>
+
+      @if (state.selectedGroup()) {
+      <div class="active-group-card mt-4 mb-2">
+        <div class="group-color-indicator" [style.backgroundColor]="state.selectedGroup()!.color"></div>
+        <div class="group-info-sidebar">
+          <strong>{{state.selectedGroup()!.name}}</strong><br>
+        </div>
+      </div>
+
+      <div class="nav-section-title">GRUPO ACTUAL</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item" [class.active]="activeTab === 'dashboard'" routerLink="/groups/dashboard">
+          <i class="pi pi-home"></i> Dashboard
+        </button>
+        <button class="nav-item" [class.active]="activeTab === 'kanban'" routerLink="/tickets/kanban">
+          <i class="pi pi-clone"></i> Kanban
+        </button>
+        <button class="nav-item" [class.active]="activeTab === 'list'" routerLink="/tickets/list">
+          <i class="pi pi-list"></i> Lista
+        </button>
+        <button class="nav-item" [class.active]="activeTab === 'group-settings'" routerLink="/groups/settings">
+          <i class="pi pi-cog"></i> Configuración
+        </button>
+      </nav>
+      }
+
+      @if (state.currentUser().role === 'Superadmin' || state.currentUser().permissions > 10) {
+      <div class="nav-section-title mt-4">SISTEMA</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item user-settings-tab" [class.active]="activeTab === 'user-settings'"
+          routerLink="/admin/user-settings">
+          <i class="pi pi-shield"></i> Usuarios
+        </button>
+      </nav>
+      }
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-mini-profile">
+        <div class="user-avatar-small" [style.backgroundImage]="'url(' + state.currentUser().avatarUrl + ')'"></div>
+        <div class="user-info-text">
+          <strong>{{state.currentUser().name}}</strong><br>
+          <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions}} permisos</span>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()" title="Cerrar sesión">
+        <i class="pi pi-sign-out"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===== DYNAMIC MAIN CONTENT ===== -->
+  <section class="main-content">
+    <router-outlet></router-outlet>
+  </section>
+</div>
