@@ -22,7 +22,9 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
            <p-button label="Mis tickets" [text]="true" size="small" [severity]="activeFilter() === 'mis_tickets' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'mis_tickets' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('mis_tickets')"></p-button>
            <p-button label="Sin asignar" [text]="true" size="small" [severity]="activeFilter() === 'sin_asignar' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'sin_asignar' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('sin_asignar')"></p-button>
            <p-button label="Alta prioridad" [text]="true" size="small" [severity]="activeFilter() === 'alta_prioridad' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'alta_prioridad' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('alta_prioridad')"></p-button>
-           <p-button label="Nuevo" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
+            @if (state.hasPermission('ticket:create')) {
+              <p-button label="Nuevo" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
+            }
         </div>
       </div>
 
@@ -235,6 +237,7 @@ export class KanbanComponent {
   }
 
   onDragStart(ticket: Ticket) {
+    if (!this.state.hasPermission('ticket:change_status')) return;
     this.currentDraggedTicket.set(ticket);
   }
 
@@ -244,6 +247,10 @@ export class KanbanComponent {
 
   onDrop(newStatus: TicketStatus, event: DragEvent) {
     event.preventDefault();
+    if (!this.state.hasPermission('ticket:change_status')) {
+      alert('No tienes permiso para cambiar el estado de los tickets.');
+      return;
+    }
     const ticket = this.currentDraggedTicket();
     if (ticket && ticket.status !== newStatus) {
       this.state.allTickets.update(tickets =>
@@ -265,6 +272,10 @@ export class KanbanComponent {
   }
 
   createNewTicket() {
+    if (!this.state.hasPermission('ticket:create')) {
+      alert('No tienes permiso para crear tickets.');
+      return;
+    }
     this.newTicket.set({
       title: '',
       description: '',
@@ -280,6 +291,7 @@ export class KanbanComponent {
   }
 
   saveNewTicket() {
+    if (!this.state.hasPermission('ticket:create')) return;
     const t = this.newTicket();
     if (!t.title) return;
     

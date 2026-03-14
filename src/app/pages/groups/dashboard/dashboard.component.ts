@@ -24,10 +24,14 @@ import { FormsModule } from '@angular/forms';
           </div>
         </div>
         <div class="flex-row-center gap-3">
-          <p-button label="Crear ticket" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
+          @if (state.hasPermission('ticket:create')) {
+            <p-button label="Crear ticket" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
+          }
           <p-button label="Kanban" icon="pi pi-clone" size="small" [outlined]="true" severity="secondary" (onClick)="goto('kanban')"></p-button>
           <p-button label="Lista" icon="pi pi-list" size="small" [outlined]="true" severity="secondary" (onClick)="goto('list')"></p-button>
-          <p-button icon="pi pi-cog" size="small" [outlined]="true" severity="secondary" (onClick)="goto('settings')"></p-button>
+          @if (state.hasPermission('group:edit')) {
+            <p-button icon="pi pi-cog" size="small" [outlined]="true" severity="secondary" (onClick)="goto('settings')"></p-button>
+          }
         </div>
       </div>
 
@@ -40,7 +44,7 @@ import { FormsModule } from '@angular/forms';
           <span class="stat-value">{{inProgressTickets().length}}</span>
           <span class="stat-label">En Progreso</span>
         </div>
-        <div class="stat-card review" style="border-bottom: 3px solid #a855f7;">
+        <div class="stat-card review" style="border-bottom: 3px solid #6355f7ff;">
           <span class="stat-value">{{reviewTickets().length}}</span>
           <span class="stat-label">Revisión</span>
         </div>
@@ -171,7 +175,7 @@ export class DashboardComponent {
   });
 
   isCreateTicketDialogVisible = signal(false);
-  
+
   statusOptions: TicketStatus[] = ['Pendiente', 'En Progreso', 'Revisión', 'Hecho', 'Bloqueado'];
   priorityOptions: TicketPriority[] = ['Baja', 'Media', 'Alta'];
 
@@ -190,6 +194,10 @@ export class DashboardComponent {
   }
 
   createNewTicket() {
+    if (!this.state.hasPermission('ticket:create')) {
+      alert('No tienes permiso para crear tickets.');
+      return;
+    }
     this.newTicket.set({
       title: '',
       description: '',
@@ -201,13 +209,14 @@ export class DashboardComponent {
   }
 
   assignToMe() {
-    this.newTicket.update(t => ({...t, assignedTo: this.state.email()}));
+    this.newTicket.update(t => ({ ...t, assignedTo: this.state.email() }));
   }
 
   saveNewTicket() {
+    if (!this.state.hasPermission('ticket:create')) return;
     const t = this.newTicket();
     if (!t.title) return;
-    
+
     const newId = 'T-' + Math.floor(Math.random() * 10000);
     const ticket: Ticket = {
       id: newId,
@@ -227,10 +236,10 @@ export class DashboardComponent {
       createdAt: new Date(),
       dueDate: new Date(new Date().setDate(new Date().getDate() + 7))
     };
-    
+
     this.state.allTickets.update(tickets => [...tickets, ticket]);
     this.isCreateTicketDialogVisible.set(false);
-    
+
     // Al guardar, el ticket se inserta en la base, se muestra en el tablero y se muestra su detalle.
     // Para mostrar el detalle abrimos el alert o modal de detalles que ya esté definido.
     alert(`Abre detalles del ticket ${ticket.id}`);

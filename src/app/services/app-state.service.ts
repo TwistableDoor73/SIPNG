@@ -181,4 +181,8 @@ export class AppStateService {
     this.selectedGroup.set(null);
   }
 
+  hasPermission(perm: Permission): boolean {
+    return this.currentUser().permissions.includes(perm);
+  }
+
 }

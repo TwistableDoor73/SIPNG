@@ -40,20 +40,25 @@ import { AppStateService } from '../../../services/app-state.service';
                  <div class="color-preview" [style.backgroundColor]="state.selectedGroup()?.color"></div>
             </div>
             
-            <p-button label="Guardar configuración" size="small" styleClass="p-button-success mb-4" (onClick)="updateGroupConfig()"></p-button>
+            @if (state.hasPermission('group:edit')) {
+              <p-button label="Guardar configuración" size="small" styleClass="p-button-success mb-4" (onClick)="updateGroupConfig()"></p-button>
+            }
             
-            <hr style="border-color: rgba(255,255,255,0.05); margin: 1.5rem 0;" />
-            
-            <h4 class="text-red-400 mt-0 mb-2">Zona de peligro</h4>
-            <p class="text-xs text-secondary mb-3">Eliminar el grupo eliminará toda su información permanentemente.</p>
-            <p-button label="Eliminar grupo" icon="pi pi-trash" [outlined]="true" severity="danger" size="small" (onClick)="deleteGroup()"></p-button>
+            @if (state.hasPermission('group:delete')) {
+               <hr style="border-color: rgba(255,255,255,0.05); margin: 1.5rem 0;" />
+               <h4 class="text-red-400 mt-0 mb-2">Zona de peligro</h4>
+               <p class="text-xs text-secondary mb-3">Eliminar el grupo eliminará toda su información permanentemente.</p>
+               <p-button label="Eliminar grupo" icon="pi pi-trash" [outlined]="true" severity="danger" size="small" (onClick)="deleteGroup()"></p-button>
+            }
          </p-card>
 
          <!-- Lista de Miembros -->
          <p-card styleClass="glass-card full-height-card">
              <div class="flex-row-center justify-content-between mb-4">
                 <h3 class="m-0"><i class="pi pi-users text-secondary mr-2"></i> Miembros ({{state.groupMembers().length}})</h3>
-                <p-button label="Añadir miembro" icon="pi pi-user-plus" size="small" styleClass="p-button-success" (onClick)="addUserToGroup()"></p-button>
+                @if (state.hasPermission('group:add_member')) {
+                   <p-button label="Añadir miembro" icon="pi pi-user-plus" size="small" styleClass="p-button-success" (onClick)="addUserToGroup()"></p-button>
+                }
              </div>
 
              <table class="ticket-table custom-theme-table fill-parent">
@@ -82,7 +87,9 @@ import { AppStateService } from '../../../services/app-state.service';
                       <td class="text-secondary text-sm">{{mem.email}}</td>
                       <td class="text-center"><span class="badge-rounded-light">{{mem.permissions.length}} permisos</span></td>
                       <td class="text-right">
-                         <i class="pi pi-user-minus text-red-500 cursor-pointer" (click)="removeUserFromGroup(mem.id)" title="Eliminar del grupo"></i>
+                         @if (state.hasPermission('group:remove_member')) {
+                            <i class="pi pi-user-minus text-red-500 cursor-pointer" (click)="removeUserFromGroup(mem.id)" title="Eliminar del grupo"></i>
+                         }
                       </td>
                    </tr>
                    }
@@ -99,18 +106,25 @@ export class SettingsComponent {
    router = inject(Router);
 
    updateGroupConfig() {
+      if (!this.state.hasPermission('group:edit')) return;
       alert('Configuración guardada correctamente.');
    }
 
    deleteGroup() {
+      if (!this.state.hasPermission('group:delete')) return;
       alert('Acción bloqueada: Requiere confirmación del servidor.');
    }
 
    addUserToGroup() {
+      if (!this.state.hasPermission('group:add_member')) return;
       alert('Esta funcionalidad será adaptada a un modal de búsqueda.');
    }
 
    removeUserFromGroup(id: string) {
+      if (!this.state.hasPermission('group:remove_member')) {
+         alert('No tienes permiso para eliminar miembros del grupo.');
+         return;
+      }
       const group = this.state.selectedGroup();
       if (!group) return;
       this.state.systemUsers.update(users => users.map(u => {

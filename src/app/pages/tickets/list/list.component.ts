@@ -28,7 +28,9 @@ import { AppStateService, Ticket } from '../../../services/app-state.service';
            <p-button label="Mis tickets" [text]="true" size="small" [severity]="activeFilter() === 'mis_tickets' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'mis_tickets' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('mis_tickets')"></p-button>
            <p-button label="Sin asignar" [text]="true" size="small" [severity]="activeFilter() === 'sin_asignar' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'sin_asignar' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('sin_asignar')"></p-button>
            <p-button label="Alta prioridad" [text]="true" size="small" [severity]="activeFilter() === 'alta_prioridad' ? 'primary' : 'secondary'" [styleClass]="activeFilter() === 'alta_prioridad' ? '' : 'p-button-outlined'" (onClick)="toggleFilter('alta_prioridad')"></p-button>
-           <p-button label="Nuevo" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
+            @if (state.hasPermission('ticket:create')) {
+              <p-button label="Nuevo" icon="pi pi-plus" size="small" styleClass="p-button-success" (onClick)="createNewTicket()"></p-button>
+            }
         </div>
       </div>
 
@@ -67,10 +69,14 @@ import { AppStateService, Ticket } from '../../../services/app-state.service';
               </td>
               <td class="text-sm">{{ticket.dueDate | date:'dd MMM yyyy'}}</td>
               <td class="text-center">
-                 <div class="flex-row-center justify-content-center gap-3">
-                   <i class="pi pi-eye text-green-500 cursor-pointer" (click)="openTicketDetails(ticket)"></i>
-                   <i class="pi pi-trash text-red-500 cursor-pointer"></i>
-                 </div>
+                  <div class="flex-row-center justify-content-center gap-3">
+                    @if (state.hasPermission('ticket:view')) {
+                      <i class="pi pi-eye text-green-500 cursor-pointer" (click)="openTicketDetails(ticket)"></i>
+                    }
+                    @if (state.hasPermission('ticket:delete')) {
+                      <i class="pi pi-trash text-red-500 cursor-pointer"></i>
+                    }
+                  </div>
               </td>
             </tr>
             }
@@ -139,10 +145,18 @@ export class ListComponent {
   }
 
   createNewTicket() {
+    if (!this.state.hasPermission('ticket:create')) {
+      alert('No tienes permiso para crear tickets.');
+      return;
+    }
     alert("Crear ticket UI no implementada en standalone aún.");
   }
 
   openTicketDetails(ticket: Ticket) {
+    if (!this.state.hasPermission('ticket:view')) {
+      alert('No tienes permiso para ver los detalles del ticket.');
+      return;
+    }
     alert(`Ver ticket UI no implementada: ${ticket.title}`);
   }
 }

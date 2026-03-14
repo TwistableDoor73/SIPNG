@@ -19,7 +19,9 @@ import { Permission, ALL_PERMISSIONS } from '../../../services/permission.servic
            <i class="pi pi-shield text-secondary mr-2"></i> Gestión de Usuarios <br>
            <span class="text-secondary font-normal block mt-2" style="font-size: 0.9rem">Administra usuarios y sus permisos individuales</span>
         </h2>
-        <p-button *ngIf="state.currentUser().role === 'Superadmin'" label="Nuevo usuario" icon="pi pi-user-plus" styleClass="p-button-success" (onClick)="openCreateUserDialog()"></p-button>
+        @if (state.hasPermission('user:create')) {
+           <p-button label="Nuevo usuario" icon="pi pi-user-plus" styleClass="p-button-success" (onClick)="openCreateUserDialog()"></p-button>
+        }
       </div>
 
       <div class="mb-4 px-2">
@@ -64,11 +66,17 @@ import { Permission, ALL_PERMISSIONS } from '../../../services/permission.servic
                  </div>
               </td>
               <td class="text-center">
-                 <div class="flex-row-center justify-content-center gap-3">
-                   <i *ngIf="state.currentUser().role === 'Superadmin' || state.currentUser().id === user.id" class="pi pi-pencil text-green-500 cursor-pointer" title="Editar" (click)="openEditUserDialog(user)"></i>
-                   <i *ngIf="state.currentUser().role === 'Superadmin'" class="pi pi-key text-yellow-500 cursor-pointer" title="Permisos" (click)="openPermissionsDialog(user)"></i>
-                   <i *ngIf="state.currentUser().role === 'Superadmin'" class="pi pi-trash text-red-500 cursor-pointer" (click)="removeSystemUser(user.id)" title="Eliminar"></i>
-                 </div>
+                  <div class="flex-row-center justify-content-center gap-3">
+                    @if (state.hasPermission('user:edit') || state.currentUser().id === user.id) {
+                       <i class="pi pi-pencil text-green-500 cursor-pointer" title="Editar" (click)="openEditUserDialog(user)"></i>
+                    }
+                    @if (state.hasPermission('user:manage_permissions')) {
+                       <i class="pi pi-key text-yellow-500 cursor-pointer" title="Permisos" (click)="openPermissionsDialog(user)"></i>
+                    }
+                    @if (state.hasPermission('user:delete')) {
+                       <i class="pi pi-trash text-red-500 cursor-pointer" (click)="removeSystemUser(user.id)" title="Eliminar"></i>
+                    }
+                  </div>
               </td>
             </tr>
             }
@@ -157,12 +165,14 @@ export class UserSettingsComponent {
   }
 
   openCreateUserDialog() {
+    if (!this.state.hasPermission('user:create')) return;
     this.isEditingUser.set(false);
     this.newUser.set({ name: '', email: '', role: 'Usuario', permissions: [], groups: [] });
     this.displayUserDialog.set(true);
   }
 
   openEditUserDialog(user: User) {
+    if (!this.state.hasPermission('user:edit') && this.state.currentUser().id !== user.id) return;
     this.isEditingUser.set(true);
     // Clonamos para evitar editar la referencia directa
     this.newUser.set({ ...user });
@@ -200,6 +210,7 @@ export class UserSettingsComponent {
   }
 
   openPermissionsDialog(user: User) {
+    if (!this.state.hasPermission('user:manage_permissions')) return;
     this.selectedUserForPermissions.set(user);
     this.permissionEditState = user.role;
     this.permissionEditStateArray = [...user.permissions];
@@ -232,6 +243,7 @@ export class UserSettingsComponent {
   }
 
   removeSystemUser(userId: string) {
+    if (!this.state.hasPermission('user:delete')) return;
     if (userId === this.state.currentUser().id) {
       alert('No puedes eliminar tu propio usuario Superadmin.');
       return;
