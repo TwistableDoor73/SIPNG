@@ -53,13 +53,14 @@
       </nav>
       }
     </div>
-
+    <p style="font-size: 0.7rem; text-align: center;">Version 2.0.1</p>
     <div class="sidebar-footer">
       <div class="user-mini-profile">
         <div class="user-avatar-small" [style.backgroundImage]="'url(' + state.currentUser().avatarUrl + ')'"></div>
         <div class="user-info-text">
           <strong>{{state.currentUser().name}}</strong><br>
-          <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions.length}} permisos</span>
+          <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions.length}}
+            permisos</span>
         </div>
       </div>
       <button class="logout-btn" (click)="logout()" title="Cerrar sesión">

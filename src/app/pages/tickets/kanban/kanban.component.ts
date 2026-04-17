@@ -6,11 +6,12 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
 import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../services/app-state.service';
+import { TicketDetailComponent } from '../detail/ticket-detail.component';
 
 @Component({
   selector: 'app-kanban',
   standalone: true,
-  imports: [CommonModule, ButtonModule, DialogModule, InputTextModule, FormsModule],
+  imports: [CommonModule, ButtonModule, DialogModule, InputTextModule, FormsModule, TicketDetailComponent],
   template: `
     <div class="page-wrapper animate-in full-height-view">
       <div class="flex-row-center justify-content-between mb-4 glass-card p-3" style="border-radius: 12px;">
@@ -184,6 +185,7 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
         </ng-template>
       </p-dialog>
 
+      <app-ticket-detail></app-ticket-detail>
     </div>
   `
 })

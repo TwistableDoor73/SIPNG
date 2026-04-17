@@ -1,52 +1,78 @@
-# Sipng
+# SIPNG ERP - Sistema Integral de Gestión de Tickets
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.16.
+🎯 **ERP moderno con arquitectura de microservicios para gestión de tickets en modo Kanban/Lista con permisos granulares por usuario y grupo.**
 
-## Development server
+![Status](https://img.shields.io/badge/status-active%20development-green)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Node](https://img.shields.io/badge/node-18%2B-green)
+![Angular](https://img.shields.io/badge/angular-20-red)
 
-To start a local development server, run:
+---
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## 🚀 Quick Start
 
 ```bash
-ng generate component component-name
+# Clonar repositorio
+git clone <repo-url>
+cd sipng
+
+# Instalar todas las dependencias
+npm run install:all
+
+# Configurar backend
+cp backend/.env.example backend/.env
+
+# Ejecutar en desarrollo
+npm run dev
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Accede a:
+- **Frontend:** http://localhost:4200
+- **Backend:** http://localhost:3000
 
-```bash
-ng generate --help
-```
+---
 
-## Building
+## 📚 Documentación
 
-To build the project run:
+- **[Guía de Deployment](./DEPLOYMENT.md)** - Railway + Vercel
+- **[Backend README](./backend/README.md)** - Documentación técnica
+- **[Credenciales de Prueba](#-credenciales)** - Acceso inmediato
 
-```bash
-ng build
-```
+---
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## 🔐 Credenciales de Prueba
 
-## Running unit tests
+| Email | Password | Rol |
+|-------|----------|-----|
+| `jesusefrainbocanegramata@gmail.com` | `password123` | Superadmin |
+| `diegotristanlimon@gmail.com` | `password` | Admin |
+| `luismontesvelazquez@gmail.com` | `password` | Usuario |
+| `paulavaleriasancheztrejo@gmail.com` | `password` | Dev |
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+---
 
-```bash
-ng test
-```
+## ✨ Características
 
-## Running end-to-end tests
+✅ Autenticación segura con JWT  
+✅ Permisos granulares sin roles (por acción)  
+✅ Gestión de tickets Kanban/Lista  
+✅ Microservicios escalables  
+✅ PostgreSQL + API Gateway  
+✅ Deploy en Railway + Vercel  
 
-For end-to-end (e2e) testing, run:
+---
+
+## 📦 Stack
+
+- **Angular 20** + PrimeNG
+- **Fastify** + PostgreSQL  
+- **Microservicios** (User, Tickets, Groups)
+- **JWT Authentication**
+- **Vercel** + **Railway**
+
+---
+
+[Ver documentación completa →](./DEPLOYMENT.md)
 
 ```bash
 ng e2e

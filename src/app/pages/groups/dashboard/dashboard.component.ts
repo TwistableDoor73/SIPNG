@@ -7,11 +7,12 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
+import { TicketDetailComponent } from '../../tickets/detail/ticket-detail.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, DialogModule, InputTextModule, FormsModule],
+  imports: [CommonModule, ButtonModule, CardModule, DialogModule, InputTextModule, FormsModule, TicketDetailComponent],
   template: `
     <div class="page-wrapper animate-in">
       <div class="flex-row-center justify-content-between glass-card p-4 mb-4" style="border-radius: 12px;">
@@ -76,7 +77,7 @@ import { FormsModule } from '@angular/forms';
              </thead>
              <tbody>
                 @for (t of state.groupTickets().slice(0, 4); track t.id) {
-                   <tr>
+                   <tr class="table-row-hover cursor-pointer" (click)="state.selectedTicketId.set(t.id)">
                       <td>{{t.title}}</td>
                       <td><span class="status-indicator {{'status-' + t.status.toLowerCase().replace(' ', '-')}}">{{t.status}}</span></td>
                       <td><span class="ticket-priority badge-{{t.priority.toLowerCase()}}">{{t.priority}}</span></td>
@@ -98,7 +99,7 @@ import { FormsModule } from '@angular/forms';
                  Sin tickets asignados
                } @else {
                  @for(t of myRecentTickets(); track t.id) {
-                    <div class="text-left mb-2 p-2 border-round" style="background: rgba(255,255,255,0.05);">
+                    <div class="text-left mb-2 p-2 border-round cursor-pointer" style="background: rgba(255,255,255,0.05);" (click)="state.selectedTicketId.set(t.id)">
                        <strong>{{t.title}}</strong><br>
                        <small class="text-secondary">{{t.status}} - {{t.dueDate | date:'shortDate'}}</small>
                     </div>
@@ -158,6 +159,7 @@ import { FormsModule } from '@angular/forms';
         </ng-template>
       </p-dialog>
 
+      <app-ticket-detail></app-ticket-detail>
     </div>
   `
 })
@@ -242,6 +244,6 @@ export class DashboardComponent {
 
     // Al guardar, el ticket se inserta en la base, se muestra en el tablero y se muestra su detalle.
     // Para mostrar el detalle abrimos el alert o modal de detalles que ya esté definido.
-    alert(`Abre detalles del ticket ${ticket.id}`);
+    this.state.selectedTicketId.set(ticket.id);
   }
 }

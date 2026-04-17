@@ -16,7 +16,8 @@ export interface User {
   email: string;
   role: string;
   avatarUrl: string;
-  permissions: Permission[];
+  permissions: Permission[]; // Permisos globales del usuario
+  permissionsByGroup?: { [groupId: string]: Permission[] }; // Permisos específicos por grupo
   groups: string[];
   age?: number;
   phone?: string;
@@ -98,12 +99,19 @@ export class AppStateService {
 
   // --- NAVIGATION STATE ---
   selectedGroup: WritableSignal<Group | null> = signal(null);
+  selectedTicketId: WritableSignal<string | null> = signal(null);
 
   // --- DERIVED COMPUTED STATE ---
   groupTickets = computed(() => {
     const group = this.selectedGroup();
     if (!group) return [];
     return this.allTickets().filter(t => t.groupId === group.id);
+  });
+
+  selectedTicket = computed(() => {
+    const id = this.selectedTicketId();
+    if (!id) return null;
+    return this.allTickets().find(t => t.id === id) || null;
   });
 
   groupMembers = computed(() => {
@@ -181,8 +189,110 @@ export class AppStateService {
     this.selectedGroup.set(null);
   }
 
-  hasPermission(perm: Permission): boolean {
-    return this.currentUser().permissions.includes(perm);
+  hasPermission(perm: Permission | string): boolean {
+    // Si hay un grupo seleccionado, verificar permisos específicos del grupo
+    const selectedGroup = this.selectedGroup();
+    if (selectedGroup) {
+      const groupPermissions = this.currentUser().permissionsByGroup?.[selectedGroup.id] || [];
+      if (groupPermissions.includes(perm as Permission)) {
+        return true;
+      }
+    }
+    
+    // Fallback a permisos globales
+    return this.currentUser().permissions.includes(perm as Permission);
+  }
+
+  /**
+   * Obtiene los permisos de un usuario en un grupo específico
+   */
+  getUserPermissionsInGroup(userId: string, groupId: string): Permission[] {
+    const user = this.systemUsers().find(u => u.id === userId);
+    if (!user) return [];
+    
+    // Retornar permisos específicos del grupo si existen
+    return user.permissionsByGroup?.[groupId] || user.permissions;
+  }
+
+  /**
+   * Asigna permisos a un usuario en un grupo específico
+   */
+  setUserPermissionsInGroup(userId: string, groupId: string, permissions: Permission[]): void {
+    this.systemUsers.update(users => users.map(u => {
+      if (u.id === userId) {
+        return {
+          ...u,
+          permissionsByGroup: {
+            ...u.permissionsByGroup,
+            [groupId]: permissions
+          }
+        };
+      }
+      return u;
+    }));
+
+    // Si es el usuario actual, actualizar también currentUser
+    if (this.currentUser().id === userId) {
+      this.currentUser.update(user => ({
+        ...user,
+        permissionsByGroup: {
+          ...user.permissionsByGroup,
+          [groupId]: permissions
+        }
+      }));
+    }
+  }
+
+  /**
+   * Obtiene todos los permisos de un usuario en todos los grupos
+   */
+  getUserGroupPermissions(userId: string): { [groupId: string]: Permission[] } {
+    const user = this.systemUsers().find(u => u.id === userId);
+    if (!user) return {};
+    
+    return user.permissionsByGroup || {};
+  }
+
+  updateTicket(id: string, updates: Partial<Ticket>) {
+    this.allTickets.update(tickets => tickets.map(t => {
+      if (t.id === id) {
+        const historyEntries: TicketHistory[] = [];
+        Object.keys(updates).forEach(key => {
+          if (updates[key] !== (t as any)[key] && key !== 'comments' && key !== 'history') {
+            historyEntries.push({
+              author: this.currentUser().email,
+              action: `Cambió ${key} de "${(t as any)[key]}" a "${updates[key]}"`,
+              date: new Date()
+            });
+          }
+        });
+
+        return {
+          ...t,
+          ...updates,
+          history: [...t.history, ...historyEntries]
+        };
+      }
+      return t;
+    }));
+  }
+
+  addComment(ticketId: string, text: string) {
+    if (!text.trim()) return;
+    this.allTickets.update(tickets => tickets.map(t => {
+      if (t.id === ticketId) {
+        const newComment: TicketComment = {
+          author: this.currentUser().email,
+          text: text,
+          date: new Date()
+        };
+        return {
+          ...t,
+          comments: [...t.comments, newComment]
+        };
+      }
+      return t;
+    }));
   }
 
 }

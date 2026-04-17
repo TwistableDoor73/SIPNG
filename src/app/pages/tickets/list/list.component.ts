@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { AppStateService, Ticket } from '../../../services/app-state.service';
+import { TicketDetailComponent } from '../detail/ticket-detail.component';
 
 @Component({
   selector: 'app-list',
   standalone: true,
-  imports: [CommonModule, ButtonModule, InputTextModule],
+  imports: [CommonModule, ButtonModule, InputTextModule, TicketDetailComponent],
   template: `
     <div class="page-wrapper animate-in full-height-view">
       <div class="flex-row-center justify-content-between mb-4 glass-card p-3" style="border-radius: 12px;">
@@ -90,6 +91,7 @@ import { AppStateService, Ticket } from '../../../services/app-state.service';
            <i class="pi pi-angle-double-right cursor-pointer"></i>
         </div>
       </div>
+      <app-ticket-detail></app-ticket-detail>
     </div>
   `
 })
@@ -157,6 +159,6 @@ export class ListComponent {
       alert('No tienes permiso para ver los detalles del ticket.');
       return;
     }
-    alert(`Ver ticket UI no implementada: ${ticket.title}`);
+    this.state.selectedTicketId.set(ticket.id);
   }
 }
