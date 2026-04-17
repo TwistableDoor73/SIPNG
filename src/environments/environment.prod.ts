@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.sipng.com',
+  apiUrl: 'https://TU-URL-DE-RAILWAY.up.railway.app',
 };
