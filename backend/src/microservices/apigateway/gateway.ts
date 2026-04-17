@@ -22,7 +22,7 @@ const app = Fastify({
   },
 });
 
-const PORT = parseInt(process.env.API_GATEWAY_PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || process.env.API_GATEWAY_PORT || '3000', 10);
 const USER_SERVICE = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 const TICKETS_SERVICE = process.env.TICKETS_SERVICE_URL || 'http://localhost:3002';
 const GROUPS_SERVICE = process.env.GROUPS_SERVICE_URL || 'http://localhost:3003';
