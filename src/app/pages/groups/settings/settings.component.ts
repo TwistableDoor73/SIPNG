@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -6,6 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { CardModule } from 'primeng/card';
 import { AppStateService } from '../../../services/app-state.service';
+import { HttpService } from '../../../services/http.service';
 
 @Component({
    selector: 'app-settings',
@@ -55,7 +56,7 @@ import { AppStateService } from '../../../services/app-state.service';
          <!-- Lista de Miembros -->
          <p-card styleClass="glass-card full-height-card">
              <div class="flex-row-center justify-content-between mb-4">
-                <h3 class="m-0"><i class="pi pi-users text-secondary mr-2"></i> Miembros ({{state.groupMembers().length}})</h3>
+                <h3 class="m-0"><i class="pi pi-users text-secondary mr-2"></i> Miembros ({{members().length}})</h3>
                 @if (state.hasPermission('group:add_member')) {
                    <p-button label="Añadir miembro" icon="pi pi-user-plus" size="small" styleClass="p-button-success" (onClick)="addUserToGroup()"></p-button>
                 }
@@ -71,12 +72,12 @@ import { AppStateService } from '../../../services/app-state.service';
                    </tr>
                 </thead>
                 <tbody>
-                   @for (mem of state.groupMembers(); track mem.id) {
+                   @for (mem of members(); track mem.id) {
                    <tr class="table-row-hover">
                       <td>
                          <div class="flex-row-center gap-3">
-                           <div class="user-avatar-small" [style.backgroundImage]="'url(' + mem.avatarUrl + ')'" style="width: 32px; height: 32px;">
-                             <span *ngIf="!mem.avatarUrl" class="text-sm font-bold">{{mem.name.charAt(0)}}</span>
+                           <div class="user-avatar-small" [style.backgroundImage]="mem.avatar_url ? 'url(' + mem.avatar_url + ')' : 'none'" style="width: 32px; height: 32px; background-size: cover; border-radius: 50%;">
+                             <span *ngIf="!mem.avatar_url" class="text-sm font-bold">{{mem.name.charAt(0)}}</span>
                            </div>
                            <div>
                               <strong>{{mem.name}}</strong><br>
@@ -85,7 +86,7 @@ import { AppStateService } from '../../../services/app-state.service';
                          </div>
                       </td>
                       <td class="text-secondary text-sm">{{mem.email}}</td>
-                      <td class="text-center"><span class="badge-rounded-light">{{mem.permissions.length}} permisos</span></td>
+                      <td class="text-center"><span class="badge-rounded-light">{{(mem.permissions || []).length}} permisos</span></td>
                       <td class="text-right">
                          @if (state.hasPermission('group:remove_member')) {
                             <i class="pi pi-user-minus text-red-500 cursor-pointer" (click)="removeUserFromGroup(mem.id)" title="Eliminar del grupo"></i>
@@ -104,6 +105,31 @@ import { AppStateService } from '../../../services/app-state.service';
 export class SettingsComponent {
    state = inject(AppStateService);
    router = inject(Router);
+   httpService = inject(HttpService);
+
+   members = signal<any[]>([]);
+
+   constructor() {
+     effect(() => {
+       const group = this.state.selectedGroup();
+       if (group?.id) {
+         this.loadMembers(group.id);
+       } else {
+         this.members.set([]);
+       }
+     });
+   }
+
+   loadMembers(groupId: string) {
+     this.httpService.getGroup(groupId).subscribe({
+       next: (res) => {
+         if (res.data && (res.data as any).members) {
+           this.members.set((res.data as any).members);
+         }
+       },
+       error: (err) => console.error(err)
+     });
+   }
 
    updateGroupConfig() {
       if (!this.state.hasPermission('group:edit')) return;
@@ -125,13 +151,6 @@ export class SettingsComponent {
          alert('No tienes permiso para eliminar miembros del grupo.');
          return;
       }
-      const group = this.state.selectedGroup();
-      if (!group) return;
-      this.state.systemUsers.update(users => users.map(u => {
-         if (u.id === id) {
-            return { ...u, groups: u.groups.filter(gid => gid !== group.id) };
-         }
-         return u;
-      }));
+      alert('Funcionalidad de remover usuario a implementar en el backend.');
    }
 }

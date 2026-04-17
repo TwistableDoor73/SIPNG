@@ -2,25 +2,25 @@ import Fastify from 'fastify';
 // JWT handling is done via gateway middleware
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import pool from '../../db/connection.js';
+import pool from '../../db/connection.ts';
 import { 
   createToken, 
   verifyToken, 
   type TokenPayload 
-} from '../../utils/jwt.js';
+} from '../../utils/jwt.ts';
 import { 
   hashPassword, 
   comparePassword 
-} from '../../utils/crypto.js';
+} from '../../utils/crypto.ts';
 import { 
   createResponse, 
   ApiError, 
   OP_CODES 
-} from '../../utils/response.js';
+} from '../../utils/response.ts';
 import { 
   schemas, 
   validateSchema 
-} from '../../utils/schemas.js';
+} from '../../utils/schemas.ts';
 
 const app = Fastify({
   logger: true,
@@ -40,27 +40,35 @@ app.post<{ Body: any }>('/auth/login', async (request, reply) => {
     const { error, value } = validateSchema(schemas.login, request.body);
     
     if (error) {
+      app.log.error({ err: error }, 'Schema validation error');
       throw new ApiError(400, 'SxUS400', 'Invalid credentials');
     }
 
     const { email, password } = value;
+    app.log.info(`Login attempt for email: ${email}`);
 
     // Find user
     const result = await pool.query(
-      'SELECT uuid, id, name, email, password, role FROM users WHERE email = $1',
+      'SELECT uuid, id, name, email, password_hash, role FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
     if (result.rows.length === 0) {
+      app.log.warn(`User not found: ${email}`);
       throw new ApiError(401, 'SxUS401', 'Invalid email or password');
     }
 
     const user = result.rows[0];
-    const passwordMatch = await comparePassword(password, user.password);
+    app.log.info(`Found user: ${user.email}, comparing passwords...`);
+    const passwordMatch = await comparePassword(password, user.password_hash);
 
     if (!passwordMatch) {
+      app.log.warn(`Password mismatch for user: ${email}`);
       throw new ApiError(401, 'SxUS401', 'Invalid email or password');
     }
+
+    app.log.info(`Password matched for user: ${email}`);
+
 
     // Get user permissions and groups
     const permResult = await pool.query(
@@ -137,10 +145,10 @@ app.post<{ Body: any }>('/auth/register', async (request, reply) => {
 
     // Create user
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, role) 
-       VALUES ($1, $2, $3, 'Usuario') 
-       RETURNING uuid, id, name, email, role`,
-      [name, email.toLowerCase(), hashedPassword]
+      `INSERT INTO users (name, email, password_hash, role, age, phone) 
+       VALUES ($1, $2, $3, 'user', $4, $5) 
+       RETURNING uuid, id, name, email, role, age, phone`,
+      [name, email.toLowerCase(), hashedPassword, age || null, phone || null]
     );
 
     const user = result.rows[0];
@@ -176,6 +184,50 @@ app.post<{ Body: any }>('/auth/register', async (request, reply) => {
         createResponse(500, OP_CODES.SxGN500, null)
       );
     }
+  }
+});
+
+// Get all users
+app.get('/users', async (request, reply) => {
+  try {
+    const result = await pool.query(
+      `SELECT uuid, id, name, email, role, age, phone, avatar_url, created_at 
+       FROM users 
+       ORDER BY created_at DESC`
+    );
+
+    // Get permissions and groups for each user
+    const users = await Promise.all(
+      result.rows.map(async (user: any) => {
+        const permResult = await pool.query(
+          `SELECT DISTINCT permission FROM user_permissions WHERE user_id = $1`,
+          [user.id]
+        );
+
+        const groupResult = await pool.query(
+          `SELECT g.id, g.uuid, g.name FROM groups g
+           INNER JOIN group_members gm ON g.id = gm.group_id
+           WHERE gm.user_id = $1`,
+          [user.id]
+        );
+
+        return {
+          ...user,
+          uuid: user.uuid,
+          permissions: permResult.rows.map((p: any) => p.permission),
+          groups: groupResult.rows
+        };
+      })
+    );
+
+    reply.send(
+      createResponse(200, 'SxUS200', users)
+    );
+  } catch (err: any) {
+    app.log.error(err);
+    reply.status(500).send(
+      createResponse(500, OP_CODES.SxGN500, null)
+    );
   }
 });
 

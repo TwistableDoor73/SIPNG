@@ -3,20 +3,13 @@
   "version": "1.0.0",
   "description": "SIPNG ERP - Educational system for ticket management",
   "private": true,
-  "workspaces": {
-    "packages": [
-      "backend"
-    ],
-    "nohoist": [
-      "**"
-    ]
-  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "dev": "concurrently -n FRONTEND,BACKEND -k 'npm start' 'npm run dev:backend'",
     "dev:backend": "cd backend && npm run dev",
     "build:backend": "cd backend && npm run build",
     "start:backend": "cd backend && npm start",
@@ -54,12 +47,14 @@
     "@angular/cli": "^20.3.16",
     "@angular/compiler-cli": "^20.3.0",
     "@types/jasmine": "~5.1.0",
+    "concurrently": "^8.2.2",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2"
   }
 }

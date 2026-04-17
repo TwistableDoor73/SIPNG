@@ -4,9 +4,9 @@ import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
 import axios from 'axios';
-import { verifyToken, type TokenPayload } from '../../utils/jwt.js';
-import { createResponse, ApiError, OP_CODES } from '../../utils/response.js';
-import { initializeDatabase } from '../../db/connection.js';
+import { verifyToken, type TokenPayload } from '../../utils/jwt.ts';
+import { createResponse, ApiError, OP_CODES } from '../../utils/response.ts';
+import { initializeDatabase } from '../../db/connection.ts';
 
 dotenv.config();
 
@@ -40,31 +40,18 @@ await app.register(fastifyRateLimit, {
 
 // Middleware to verify token
 async function authenticateRequest(request: any, reply: any): Promise<TokenPayload> {
-  try {
-    const token = request.headers.authorization?.split(' ')[1];
+  const token = request.headers.authorization?.split(' ')[1];
 
-    if (!token) {
-      throw new ApiError(401, 'SxUS401', 'Missing authorization token');
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      throw new ApiError(401, 'SxUS401', 'Invalid or expired token');
-    }
-
-    return payload;
-  } catch (err: any) {
-    if (err instanceof ApiError) {
-      reply.status(err.statusCode).send(
-        createResponse(err.statusCode, err.intOpCode, null)
-      );
-    } else {
-      reply.status(401).send(
-        createResponse(401, 'SxUS401', null)
-      );
-    }
-    throw err;
+  if (!token) {
+    throw new ApiError(401, 'SxUS401', 'Missing authorization token');
   }
+
+  const payload = verifyToken(token);
+  if (!payload) {
+    throw new ApiError(401, 'SxUS401', 'Invalid or expired token');
+  }
+
+  return payload;
 }
 
 // Grant type to authorization
@@ -117,6 +104,36 @@ app.post('/auth/register', async (request, reply) => {
 
 // ==== PROTECTED ROUTES (Require authentication) ====
 
+// Get all users
+app.get('/users', async (request: any, reply) => {
+  try {
+    const user = await authenticateRequest(request, reply);
+    request.user = user;
+    
+    const response = await axios.get(`${USER_SERVICE}/users`, {
+      headers: {
+        authorization: request.headers.authorization,
+      }
+    });
+    reply.send(response.data);
+  } catch (error: any) {
+    if (!reply.sent) {
+      app.log.error(error);
+      if (error.response?.data) {
+        reply.status(error.response.status).send(error.response.data);
+      } else if (error instanceof ApiError) {
+        reply.status(error.statusCode).send(
+          createResponse(error.statusCode, error.intOpCode, null)
+        );
+      } else {
+        reply.status(500).send(
+          createResponse(500, OP_CODES.SxGN500, null)
+        );
+      }
+    }
+  }
+});
+
 // Proxy all ticket requests
 app.all<{ Params: any }>('/tickets*', async (request: any, reply) => {
   try {
@@ -136,13 +153,19 @@ app.all<{ Params: any }>('/tickets*', async (request: any, reply) => {
 
     reply.send(response.data);
   } catch (error: any) {
-    app.log.error(error);
-    if (error.response?.data) {
-      reply.status(error.response.status).send(error.response.data);
-    } else {
-      reply.status(500).send(
-        createResponse(500, OP_CODES.SxGN500, null)
-      );
+    if (!reply.sent) {
+      app.log.error(error);
+      if (error.response?.data) {
+        reply.status(error.response.status).send(error.response.data);
+      } else if (error instanceof ApiError) {
+        reply.status(error.statusCode).send(
+          createResponse(error.statusCode, error.intOpCode, null)
+        );
+      } else {
+        reply.status(500).send(
+          createResponse(500, OP_CODES.SxGN500, null)
+        );
+      }
     }
   }
 });
@@ -166,13 +189,19 @@ app.all<{ Params: any }>('/groups*', async (request: any, reply) => {
 
     reply.send(response.data);
   } catch (error: any) {
-    app.log.error(error);
-    if (error.response?.data) {
-      reply.status(error.response.status).send(error.response.data);
-    } else {
-      reply.status(500).send(
-        createResponse(500, OP_CODES.SxGN500, null)
-      );
+    if (!reply.sent) {
+      app.log.error(error);
+      if (error.response?.data) {
+        reply.status(error.response.status).send(error.response.data);
+      } else if (error instanceof ApiError) {
+        reply.status(error.statusCode).send(
+          createResponse(error.statusCode, error.intOpCode, null)
+        );
+      } else {
+        reply.status(500).send(
+          createResponse(500, OP_CODES.SxGN500, null)
+        );
+      }
     }
   }
 });

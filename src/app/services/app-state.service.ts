@@ -61,26 +61,21 @@ export class AppStateService {
 
   // --- AUTH STATE ---
   isAuthenticated: WritableSignal<boolean> = signal(false);
-  email: WritableSignal<string> = signal('jesusefrainbocanegramata@gmail.com');
-  password: WritableSignal<string> = signal('password123');
+  email: WritableSignal<string> = signal('');
+  password: WritableSignal<string> = signal('');
 
   currentUser: WritableSignal<User> = signal<User>({
-    id: 'U-0',
-    name: 'Jesus Efrain Bocanegra Mata',
-    email: 'jesusefrainbocanegramata@gmail.com',
-    role: 'Superadmin',
-    avatarUrl: 'https://i.pravatar.cc/150?img=67',
-    permissions: [...ALL_PERMISSIONS],
-    groups: ['1', '2', '3']
+    id: '',
+    name: '',
+    email: '',
+    role: 'user',
+    avatarUrl: '',
+    permissions: [],
+    groups: []
   });
 
-  // --- SYSTEM DATA (MOCKS) ---
-  systemUsers: WritableSignal<User[]> = signal([
-    this.currentUser(),
-    { id: 'U-1', name: 'Diego Tristan Limon', email: 'diegotristanlimon@gmail.com', role: 'Admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin', permissions: ['ticket:create', 'ticket:edit', 'ticket:delete', 'ticket:view', 'ticket:assign', 'ticket:change_status', 'ticket:comment', 'group:view', 'user:create', 'user:edit', 'user:view'], groups: ['1', '3'] },
-    { id: 'U-2', name: 'Luis Felipe Montes Velazquez', email: 'luismontesvelazquez@gmail.com', role: 'Usuario', avatarUrl: 'https://i.pravatar.cc/150?u=user', permissions: ['ticket:view', 'ticket:comment', 'group:view'], groups: ['1', '2'] },
-    { id: 'U-3', name: 'Paula Valeria Sanchez Trejo', email: 'paulavaleriasancheztrejo@gmail.com', role: 'Dev', avatarUrl: 'https://i.pravatar.cc/150?u=dev', permissions: ['ticket:create', 'ticket:edit', 'ticket:view', 'ticket:change_status', 'ticket:comment', 'group:view'], groups: ['1', '3'] },
-  ]);
+  // --- SYSTEM DATA (from backend) ---
+  systemUsers: WritableSignal<User[]> = signal([]);
 
   groups: Group[] = [
     { id: '1', name: 'Equipo Dev', description: 'Equipo de desarrollo de software', color: '#6366f1', icon: 'pi-code' },

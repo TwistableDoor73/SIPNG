@@ -7,6 +7,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { CardModule } from 'primeng/card';
 import { AppStateService } from '../../../services/app-state.service';
+import { HttpService } from '../../../services/http.service';
 
 @Component({
   selector: 'app-login',
@@ -73,9 +74,11 @@ import { AppStateService } from '../../../services/app-state.service';
 })
 export class LoginComponent {
   state = inject(AppStateService);
+  httpService = inject(HttpService);
   router = inject(Router);
 
   isLoginMode = true;
+  isLoading = false;
   
   registerData = {
     name: '',
@@ -106,28 +109,98 @@ export class LoginComponent {
 
   handleSubmit() {
     if (this.isLoginMode) {
-      this.state.login();
-      if (this.state.isAuthenticated()) {
-        this.router.navigate(['/home']);
-      }
+      this.loginWithBackend();
     } else {
-      // Validations and Registration
-      if (!this.registerData.name || !this.registerData.email || !this.registerData.password) {
-        alert('Por favor, llena los campos obligatorios (Nombre, Email, Contraseña).');
-        return;
-      }
-      if (this.registerData.phone && this.registerData.phone.length !== 10) {
-        alert('El registro requiere un número de teléfono de exactamente 10 dígitos.');
-        return;
-      }
-
-      const success = this.state.register(this.registerData, this.registerData.password);
-      if (success) {
-        alert('Cuenta creada exitosamente.');
-        this.router.navigate(['/home']);
-      } else {
-        alert('Ese correo electrónico ya está en uso. Por favor, utiliza otro.');
-      }
+      this.registerWithBackend();
     }
+  }
+
+  loginWithBackend() {
+    if (!this.state.email() || !this.state.password()) {
+      alert('Por favor, ingresa email y contraseña.');
+      return;
+    }
+
+    this.isLoading = true;
+    this.httpService.login({
+      email: this.state.email(),
+      password: this.state.password()
+    }).subscribe({
+      next: (response) => {
+        if (response.data?.token) {
+          localStorage.setItem('auth_token', response.data.token);
+          const userData = response.data.user;
+          this.state.currentUser.set({
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role,
+            permissions: (userData.permissions || []) as any,
+            groups: (userData.groups || []).map((g: any) => g.id || g),
+            avatarUrl: userData.avatarUrl || '',
+            age: userData.age || 0,
+            phone: userData.phone || ''
+          });
+          this.state.isAuthenticated.set(true);
+          this.router.navigate(['/home']);
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        this.isLoading = false;
+        alert('Error al iniciar sesión: ' + (error.error?.message || 'Por favor intenta de nuevo'));
+      }
+    });
+  }
+
+  registerWithBackend() {
+    if (!this.registerData.name || !this.registerData.email || !this.registerData.password) {
+      alert('Por favor, llena los campos obligatorios (Nombre, Email, Contraseña).');
+      return;
+    }
+    if (this.registerData.phone && this.registerData.phone.length !== 10) {
+      alert('El registro requiere un número de teléfono de exactamente 10 dígitos.');
+      return;
+    }
+
+    this.isLoading = true;
+    this.httpService.register({
+      name: this.registerData.name,
+      email: this.registerData.email,
+      password: this.registerData.password,
+      age: this.registerData.age || 0,
+      phone: this.registerData.phone
+    }).subscribe({
+      next: (response) => {
+        if (response.data?.token) {
+          localStorage.setItem('auth_token', response.data.token);
+          const userData = response.data.user;
+          this.state.currentUser.set({
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role,
+            permissions: (userData.permissions || ['ticket:view', 'ticket:comment', 'group:view']) as any,
+            groups: (userData.groups || []).map((g: any) => g.id || g),
+            avatarUrl: userData.avatarUrl || '',
+            age: userData.age || this.registerData.age || 0,
+            phone: userData.phone || this.registerData.phone
+          });
+          this.state.isAuthenticated.set(true);
+          alert('Cuenta creada exitosamente.');
+          this.router.navigate(['/home']);
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        this.isLoading = false;
+        const errorMessage = error.error?.message || error.message || 'Error desconocido';
+        if (error.status === 400 && errorMessage.includes('Email already')) {
+          alert('Ese correo electrónico ya está en uso. Por favor, utiliza otro.');
+        } else {
+          alert('Error al registrarse: ' + errorMessage);
+        }
+      }
+    });
   }
 }

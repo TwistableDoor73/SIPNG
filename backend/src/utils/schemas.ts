@@ -46,16 +46,16 @@ export const schemas = {
   // Group schemas
   createGroup: Joi.object({
     name: Joi.string().min(2).max(255).required(),
-    description: Joi.string().optional(),
+    description: Joi.string().allow('').optional(),
     color: Joi.string().pattern(/^#[0-9A-F]{6}$/i).optional(),
-    icon: Joi.string().optional(),
+    icon: Joi.string().allow('').optional(),
   }),
 
   updateGroup: Joi.object({
     name: Joi.string().min(2).max(255).optional(),
-    description: Joi.string().optional(),
+    description: Joi.string().allow('').optional(),
     color: Joi.string().pattern(/^#[0-9A-F]{6}$/i).optional(),
-    icon: Joi.string().optional(),
+    icon: Joi.string().allow('').optional(),
   }),
 
   // User permission schemas

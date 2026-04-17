@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import pool from '../../db/connection.js';
-import { createResponse, ApiError, OP_CODES } from '../../utils/response.js';
-import { schemas, validateSchema } from '../../utils/schemas.js';
+import pool from '../../db/connection.ts';
+import { createResponse, ApiError, OP_CODES } from '../../utils/response.ts';
+import { schemas, validateSchema } from '../../utils/schemas.ts';
 
 const app = Fastify({
   logger: true,

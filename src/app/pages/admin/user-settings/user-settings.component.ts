@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -7,6 +7,7 @@ import { DialogModule } from 'primeng/dialog';
 import { CheckboxModule } from 'primeng/checkbox';
 import { AppStateService, User } from '../../../services/app-state.service';
 import { Permission, ALL_PERMISSIONS } from '../../../services/permission.service';
+import { HttpService } from '../../../services/http.service';
 
 @Component({
   selector: 'app-user-settings',
@@ -36,23 +37,25 @@ import { Permission, ALL_PERMISSIONS } from '../../../services/permission.servic
             </tr>
           </thead>
           <tbody>
-            @for (user of state.systemUsers(); track user.id) {
+            @for (user of users(); track user.id) {
             <tr class="border-b border-b-gray-800 hover:bg-gray-900">
               <td class="p-3">
                  <div class="flex items-center gap-2">
-                   <img [src]="user.avatarUrl" [alt]="user.name" class="w-8 h-8 rounded-full" />
+                   <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                     {{user.name.charAt(0).toUpperCase()}}
+                   </div>
                    <strong>{{user.name}}</strong>
                  </div>
               </td>
               <td class="p-3 text-secondary">{{user.email}}</td>
-              <td class="p-3 text-center"><span class="text-xs bg-purple-700 bg-opacity-30 px-3 py-1 rounded-full">{{user.permissions.length}}</span></td>
+              <td class="p-3 text-center"><span class="text-xs bg-purple-700 bg-opacity-30 px-3 py-1 rounded-full">{{user.role}}</span></td>
               <td class="p-3 text-center">
                   <div class="flex justify-center gap-3">
                     @if (state.hasPermission('user:manage_permissions')) {
                        <i class="pi pi-key text-blue-400 cursor-pointer" title="Permisos" (click)="openPermissionsDialog(user)"></i>
                     }
                     @if (state.hasPermission('user:delete')) {
-                       <i class="pi pi-trash text-red-500 cursor-pointer" (click)="removeSystemUser(user.id)"></i>
+                       <i class="pi pi-trash text-red-500 cursor-pointer" (click)="deleteUser(user.id)"></i>
                     }
                   </div>
               </td>
@@ -147,38 +150,56 @@ import { Permission, ALL_PERMISSIONS } from '../../../services/permission.servic
     .w-8 { width: 2rem; }
   `]
 })
-export class UserSettingsComponent {
+export class UserSettingsComponent implements OnInit {
   state = inject(AppStateService);
+  httpService = inject(HttpService);
 
+  users = signal<any[]>([]);
   displayUserDialog = false;
   displayPermissionsDialog = false;
-  newUser = signal<Partial<User>>({ role: 'Usuario', permissions: [], groups: [] });
+  newUser = signal<Partial<User>>({ role: 'user', permissions: [], groups: [] });
   selectedUserForPermissions = signal<User | null>(null);
   
-  permissionEditState: string = 'Usuario';
+  permissionEditState: string = 'user';
   permissionEditStateArray: Permission[] = [];
   allPermissionsList = ALL_PERMISSIONS;
 
+  ngOnInit() {
+    this.loadUsers();
+  }
+
+  loadUsers() {
+    // Load all users from backend
+    this.httpService.getUsers().subscribe({
+      next: (response) => {
+        const mappedUsers = response.data.map((u: any) => ({
+          id: u.uuid,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          permissions: (u.permissions || []) as any,
+          groups: (u.groups || []).map((g: any) => g.id || g),
+          avatarUrl: u.avatar_url || '',
+          age: u.age,
+          phone: u.phone
+        }));
+        this.users.set(mappedUsers);
+      },
+      error: (error) => {
+        console.error('Error loading users:', error);
+      }
+    });
+  }
+
   openCreateUserDialog() {
-    this.newUser.set({ name: '', email: '', role: 'Usuario', permissions: [], groups: [] });
+    this.newUser.set({ name: '', email: '', role: 'user', permissions: [], groups: [] });
     this.displayUserDialog = true;
   }
 
   saveUser() {
-    const data = this.newUser();
-    if (data.name && data.email) {
-      const newU: User = {
-        id: 'U-' + Math.floor(Math.random() * 10000),
-        name: data.name,
-        email: data.email,
-        role: 'Usuario',
-        permissions: ['ticket:view', 'ticket:comment', 'group:view'],
-        avatarUrl: 'https://i.pravatar.cc/150?u=' + data.email,
-        groups: []
-      };
-      this.state.systemUsers.update(users => [...users, newU]);
-      this.displayUserDialog = false;
-    }
+    // Users are created through registration, not here for now
+    alert('Users are created through the registration process');
+    this.displayUserDialog = false;
   }
 
   openPermissionsDialog(user: User) {
@@ -189,25 +210,20 @@ export class UserSettingsComponent {
   }
 
   onRoleChange(newRole: string) {
-    if (newRole === 'Superadmin') this.permissionEditStateArray = [...ALL_PERMISSIONS];
-    else if (newRole === 'Admin') this.permissionEditStateArray = ['ticket:create', 'ticket:edit', 'ticket:delete', 'ticket:view', 'ticket:assign', 'ticket:change_status', 'ticket:comment', 'group:view', 'user:create', 'user:edit', 'user:view'];
-    else if (newRole === 'Dev') this.permissionEditStateArray = ['ticket:create', 'ticket:edit', 'ticket:view', 'ticket:change_status', 'ticket:comment', 'group:view'];
-    else this.permissionEditStateArray = ['ticket:view', 'ticket:comment', 'group:view'];
+    if (newRole === 'superadmin') this.permissionEditStateArray = [...ALL_PERMISSIONS];
+    else if (newRole === 'admin') this.permissionEditStateArray = ['ticket:create' as Permission, 'ticket:edit' as Permission, 'ticket:delete' as Permission, 'ticket:view' as Permission, 'ticket:assign' as Permission, 'ticket:change_status' as Permission, 'ticket:comment' as Permission, 'group:view' as Permission, 'user:create' as Permission, 'user:edit' as Permission, 'user:view' as Permission];
+    else this.permissionEditStateArray = ['ticket:view' as Permission, 'ticket:comment' as Permission, 'group:view' as Permission];
   }
 
   savePermissions() {
-    const userToEdit = this.selectedUserForPermissions();
-    if (userToEdit) {
-      this.state.systemUsers.update(users => 
-        users.map(u => u.id === userToEdit.id ? { ...u, role: this.permissionEditState, permissions: [...this.permissionEditStateArray] } : u)
-      );
-      this.displayPermissionsDialog = false;
-    }
+    // Permissions would be saved to backend here
+    this.displayPermissionsDialog = false;
   }
 
-  removeSystemUser(userId: string) {
+  deleteUser(userId: string) {
     if (confirm('¿Eliminar este usuario?')) {
-      this.state.systemUsers.update(users => users.filter(u => u.id !== userId));
+      // Would delete from backend
+      this.loadUsers();
     }
   }
 }

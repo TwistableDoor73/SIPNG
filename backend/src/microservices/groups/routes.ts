@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import pool from '../../db/connection.js';
-import { createResponse, ApiError, OP_CODES } from '../../utils/response.js';
-import { schemas, validateSchema } from '../../utils/schemas.js';
+import pool from '../../db/connection.ts';
+import { createResponse, ApiError, OP_CODES } from '../../utils/response.ts';
+import { schemas, validateSchema } from '../../utils/schemas.ts';
 
 const app = Fastify({
   logger: true,
@@ -66,7 +66,7 @@ app.get<{ Params: { id: string } }>('/groups/:id', async (request, reply) => {
     app.log.error(err);
     if (err instanceof ApiError) {
       reply.status(err.statusCode).send(
-        createResponse(err.statusCode, err.intOpCode, null)
+        createResponse(err.statusCode, err.intOpCode, { message: err.message })
       );
     } else {
       reply.status(500).send(
@@ -82,7 +82,7 @@ app.post<{ Body: any }>('/groups', async (request, reply) => {
     const { error, value } = validateSchema(schemas.createGroup, request.body);
 
     if (error) {
-      throw new ApiError(400, 'SxGP400', 'Invalid group data');
+      throw new ApiError(400, 'SxGP400', error.details.map((x: any) => x.message).join(', '));
     }
 
     const { name, description, color, icon } = value;
@@ -101,7 +101,7 @@ app.post<{ Body: any }>('/groups', async (request, reply) => {
     app.log.error(err);
     if (err instanceof ApiError) {
       reply.status(err.statusCode).send(
-        createResponse(err.statusCode, err.intOpCode, null)
+        createResponse(err.statusCode, err.intOpCode, { message: err.message })
       );
     } else {
       reply.status(500).send(
@@ -118,7 +118,7 @@ app.patch<{ Params: { id: string }; Body: any }>('/groups/:id', async (request, 
     const { error, value } = validateSchema(schemas.updateGroup, request.body);
 
     if (error) {
-      throw new ApiError(400, 'SxGP400', 'Invalid group data');
+      throw new ApiError(400, 'SxGP400', error.details.map((x: any) => x.message).join(', '));
     }
 
     // Find group first
@@ -154,7 +154,7 @@ app.patch<{ Params: { id: string }; Body: any }>('/groups/:id', async (request, 
     app.log.error(err);
     if (err instanceof ApiError) {
       reply.status(err.statusCode).send(
-        createResponse(err.statusCode, err.intOpCode, null)
+        createResponse(err.statusCode, err.intOpCode, { message: err.message })
       );
     } else {
       reply.status(500).send(
@@ -185,7 +185,7 @@ app.delete<{ Params: { id: string } }>('/groups/:id', async (request, reply) => 
     app.log.error(err);
     if (err instanceof ApiError) {
       reply.status(err.statusCode).send(
-        createResponse(err.statusCode, err.intOpCode, null)
+        createResponse(err.statusCode, err.intOpCode, { message: err.message })
       );
     } else {
       reply.status(500).send(
