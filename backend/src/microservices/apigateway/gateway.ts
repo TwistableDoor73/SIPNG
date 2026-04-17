@@ -70,6 +70,23 @@ function requirePermission(permission: string) {
 }
 
 // ==== AUTH ROUTES (No authentication required) ====
+
+// Temporary debug endpoint - REMOVE after fixing
+app.post('/debug/login', async (request, reply) => {
+  try {
+    const response = await axios.post(`${USER_SERVICE}/auth/login`, request.body);
+    reply.send({ ok: true, data: response.data });
+  } catch (error: any) {
+    reply.status(500).send({
+      error: error.message,
+      code: error.code,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data,
+      url: `${USER_SERVICE}/auth/login`,
+    });
+  }
+});
+
 app.post('/auth/login', async (request, reply) => {
   try {
     const response = await axios.post(`${USER_SERVICE}/auth/login`, request.body);
