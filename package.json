@@ -3,6 +3,14 @@
   "version": "1.0.0",
   "description": "SIPNG ERP - Educational system for ticket management",
   "private": true,
+  "workspaces": {
+    "packages": [
+      "backend"
+    ],
+    "nohoist": [
+      "**"
+    ]
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
