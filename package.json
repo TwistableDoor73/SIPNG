@@ -3,18 +3,12 @@
   "version": "1.0.0",
   "description": "SIPNG ERP - Educational system for ticket management",
   "private": true,
-  "workspaces": [
-    ".",
-    "backend"
-  ],
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:all": "npm run build && npm run build:backend",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "dev": "concurrently \"npm start\" \"npm run dev:backend\"",
     "dev:backend": "cd backend && npm run dev",
     "build:backend": "cd backend && npm run build",
     "start:backend": "cd backend && npm start",
@@ -32,7 +26,6 @@
       }
     ]
   },
-  "private": true,
   "dependencies": {
     "@angular/cdk": "^20.2.14",
     "@angular/common": "^20.3.0",
