@@ -16,9 +16,10 @@ export interface TokenPayload {
 }
 
 export function createToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, {
+  const options: any = {
     expiresIn: JWT_EXPIRY,
-  });
+  };
+  return jwt.sign(payload, JWT_SECRET as string, options);
 }
 
 export function verifyToken(token: string): TokenPayload | null {

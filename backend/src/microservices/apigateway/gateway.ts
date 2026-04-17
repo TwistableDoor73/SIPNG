@@ -39,7 +39,7 @@ await app.register(fastifyRateLimit, {
 });
 
 // Middleware to verify token
-app.decorate('authenticate', async function (request, reply) {
+async function authenticateRequest(request: any, reply: any): Promise<TokenPayload> {
   try {
     const token = request.headers.authorization?.split(' ')[1];
 
@@ -52,7 +52,7 @@ app.decorate('authenticate', async function (request, reply) {
       throw new ApiError(401, 'SxUS401', 'Invalid or expired token');
     }
 
-    request.user = payload;
+    return payload;
   } catch (err: any) {
     if (err instanceof ApiError) {
       reply.status(err.statusCode).send(
@@ -63,8 +63,9 @@ app.decorate('authenticate', async function (request, reply) {
         createResponse(401, 'SxUS401', null)
       );
     }
+    throw err;
   }
-});
+}
 
 // Grant type to authorization
 function requirePermission(permission: string) {
@@ -117,9 +118,10 @@ app.post('/auth/register', async (request, reply) => {
 // ==== PROTECTED ROUTES (Require authentication) ====
 
 // Proxy all ticket requests
-app.all<{ Params: any }>('/tickets*', async (request, reply) => {
+app.all<{ Params: any }>('/tickets*', async (request: any, reply) => {
   try {
-    await app.authenticate(request, reply);
+    const user = await authenticateRequest(request, reply);
+    request.user = user;
     
     const path = request.url.replace('/tickets', '');
     const response = await axios({
@@ -146,9 +148,10 @@ app.all<{ Params: any }>('/tickets*', async (request, reply) => {
 });
 
 // Proxy all group requests
-app.all<{ Params: any }>('/groups*', async (request, reply) => {
+app.all<{ Params: any }>('/groups*', async (request: any, reply) => {
   try {
-    await app.authenticate(request, reply);
+    const user = await authenticateRequest(request, reply);
+    request.user = user;
     
     const path = request.url.replace('/groups', '');
     const response = await axios({

@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import fastifyJwt from '@fastify/jwt';
+// JWT handling is done via gateway middleware
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
 import pool from '../../db/connection.js';
@@ -32,9 +32,6 @@ const PORT = parseInt(process.env.USER_SERVICE_PORT || '3001', 10);
 await app.register(fastifyHelmet);
 await app.register(fastifyCors, {
   origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
-});
-await app.register(fastifyJwt, {
-  secret: process.env.JWT_SECRET || 'your-secret-key',
 });
 
 // Routes
