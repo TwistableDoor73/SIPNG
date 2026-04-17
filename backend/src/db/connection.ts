@@ -5,11 +5,14 @@ dotenv.config();
 
 const { Pool } = pg;
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  ssl: isProduction ? { rejectUnauthorized: false } : false,
 });
 
 pool.on('error', (err: Error) => {
@@ -40,9 +43,11 @@ async function createTables() {
       uuid VARCHAR(36) UNIQUE NOT NULL DEFAULT gen_random_uuid()::text,
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
       avatar_url VARCHAR(500),
-      role VARCHAR(50) NOT NULL DEFAULT 'Usuario',
+      role VARCHAR(50) NOT NULL DEFAULT 'user',
+      age INTEGER,
+      phone VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -73,12 +78,12 @@ async function createTables() {
     )
     `,
     
-    // User permissions (per group)
+    // User permissions (global and per-group)
     `
     CREATE TABLE IF NOT EXISTS user_permissions (
       id SERIAL PRIMARY KEY,
       user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      group_id INT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+      group_id INT REFERENCES groups(id) ON DELETE CASCADE,
       permission VARCHAR(100) NOT NULL,
       granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, group_id, permission)
