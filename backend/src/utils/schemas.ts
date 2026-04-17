@@ -20,13 +20,15 @@ export const schemas = {
     title: Joi.string().min(3).max(255).required(),
     description: Joi.string().optional(),
     priority: Joi.string()
-      .valid('Baja', 'Media', 'Alta')
-      .default('Media'),
+      .valid('low', 'medium', 'high', 'urgent')
+      .default('medium'),
     status: Joi.string()
-      .valid('Pendiente', 'En Progreso', 'Revisión', 'Hecho', 'Bloqueado')
-      .default('Pendiente'),
-    assignedToId: Joi.string().optional(),
-    dueDate: Joi.date().optional(),
+      .valid('todo', 'in_progress', 'in_review', 'done')
+      .default('todo'),
+    assignedToId: Joi.string().allow(null, '').optional(),
+    dueDate: Joi.date().allow(null).optional(),
+    startDate: Joi.date().allow(null).optional(),
+    endDate: Joi.date().allow(null).optional(),
     groupId: Joi.string().required(),
   }),
 
@@ -34,13 +36,15 @@ export const schemas = {
     title: Joi.string().min(3).max(255).optional(),
     description: Joi.string().optional(),
     priority: Joi.string()
-      .valid('Baja', 'Media', 'Alta')
+      .valid('low', 'medium', 'high', 'urgent')
       .optional(),
     status: Joi.string()
-      .valid('Pendiente', 'En Progreso', 'Revisión', 'Hecho', 'Bloqueado')
+      .valid('todo', 'in_progress', 'in_review', 'done')
       .optional(),
-    assignedToId: Joi.string().optional(),
-    dueDate: Joi.date().optional(),
+    assignedToId: Joi.string().allow(null, '').optional(),
+    dueDate: Joi.date().allow(null).optional(),
+    startDate: Joi.date().allow(null).optional(),
+    endDate: Joi.date().allow(null).optional(),
   }),
 
   // Group schemas

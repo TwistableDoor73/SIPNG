@@ -283,6 +283,26 @@ export class HttpService {
     );
   }
 
+  addGroupMember(groupId: string, userId: string): Observable<{
+    statusCode: number;
+    intOpCode: string;
+    data: any;
+  }> {
+    return this.http.post<any>(`${this.apiUrl}/groups/${groupId}/members`, { userId }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  removeGroupMember(groupId: string, userId: string): Observable<{
+    statusCode: number;
+    intOpCode: string;
+    data: any;
+  }> {
+    return this.http.delete<any>(`${this.apiUrl}/groups/${groupId}/members/${userId}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
   // ==================== Users ====================
 
   getUsers(): Observable<{
@@ -291,6 +311,28 @@ export class HttpService {
     data: any[];
   }> {
     return this.http.get<any>(`${this.apiUrl}/users`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  deleteUser(id: string): Observable<{
+    statusCode: number;
+    intOpCode: string;
+    data: any;
+  }> {
+    return this.http.delete<any>(`${this.apiUrl}/users/${id}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  updateUserPermissions(userId: string, permissions: string[], role: string, groupId?: string): Observable<{
+    statusCode: number;
+    intOpCode: string;
+    data: any;
+  }> {
+    const body: any = { permissions, role };
+    if (groupId) body.groupId = groupId;
+    return this.http.put<any>(`${this.apiUrl}/users/${userId}/permissions`, body).pipe(
       catchError(this.handleError)
     );
   }

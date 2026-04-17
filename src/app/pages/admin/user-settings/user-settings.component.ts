@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { CheckboxModule } from 'primeng/checkbox';
+import { SelectModule } from 'primeng/select';
 import { AppStateService, User } from '../../../services/app-state.service';
 import { Permission, ALL_PERMISSIONS } from '../../../services/permission.service';
 import { HttpService } from '../../../services/http.service';
@@ -12,7 +13,7 @@ import { HttpService } from '../../../services/http.service';
 @Component({
   selector: 'app-user-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, DialogModule, CheckboxModule],
+  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, DialogModule, CheckboxModule, SelectModule],
   template: `
     <div class="page-wrapper animate-in">
       <div class="mb-4">
@@ -23,7 +24,7 @@ import { HttpService } from '../../../services/http.service';
       </div>
 
       @if (state.hasPermission('user:create')) {
-        <p-button label="Nuevo usuario" icon="pi pi-user-plus" styleClass="p-button-success mb-4" (click)="openCreateUserDialog()"></p-button>
+        <p-button label="Nuevo usuario" icon="pi pi-user-plus" styleClass="p-button-success mb-4" (onClick)="openCreateUserDialog()"></p-button>
       }
 
       <div class="glass-card p-4 mb-4">
@@ -32,6 +33,7 @@ import { HttpService } from '../../../services/http.service';
             <tr class="border-b border-b-gray-700" >
               <th class="text-left p-3">Usuario</th>
               <th class="text-left p-3">Email</th>
+              <th class="text-center p-3">Rol</th>
               <th class="text-center p-3">Permisos</th>
               <th class="text-center p-3">Acciones</th>
             </tr>
@@ -50,12 +52,19 @@ import { HttpService } from '../../../services/http.service';
               <td class="p-3 text-secondary">{{user.email}}</td>
               <td class="p-3 text-center"><span class="text-xs bg-purple-700 bg-opacity-30 px-3 py-1 rounded-full">{{user.role}}</span></td>
               <td class="p-3 text-center">
+                @if (user.role === 'superadmin') {
+                  <span class="text-xs text-secondary">Todos (superadmin)</span>
+                } @else {
+                  <span class="text-xs text-secondary">{{user.permissions?.length || 0}} globales</span>
+                }
+              </td>
+              <td class="p-3 text-center">
                   <div class="flex justify-center gap-3">
-                    @if (state.hasPermission('user:manage_permissions')) {
+                    @if (state.currentUser().role === 'superadmin') {
                        <i class="pi pi-key text-blue-400 cursor-pointer" title="Permisos" (click)="openPermissionsDialog(user)"></i>
                     }
-                    @if (state.hasPermission('user:delete')) {
-                       <i class="pi pi-trash text-red-500 cursor-pointer" (click)="deleteUser(user.id)"></i>
+                    @if (state.hasPermission('user:delete') && user.id !== state.currentUser().id) {
+                       <i class="pi pi-trash text-red-500 cursor-pointer" (click)="deleteUser(user.id)" title="Eliminar usuario"></i>
                     }
                   </div>
               </td>
@@ -78,27 +87,33 @@ import { HttpService } from '../../../services/http.service';
             <input pInputText type="email" class="w-full" [(ngModel)]="newUser().email" />
          </div>
          <div class="flex justify-end gap-2 mt-4">
-            <p-button label="Cancelar" severity="secondary" (click)="displayUserDialog = false"></p-button>
-            <p-button label="Crear" (click)="saveUser()"></p-button>
+            <p-button label="Cancelar" severity="secondary" (onClick)="displayUserDialog = false"></p-button>
+            <p-button label="Crear" (onClick)="saveUser()"></p-button>
          </div>
       </div>
     </p-dialog>
 
     <!-- Dialog para permisos -->
-    <p-dialog [(visible)]="displayPermissionsDialog" [modal]="true" [style]="{ width: '500px' }" header="Gestión de Permisos">
-      <div *ngIf="selectedUserForPermissions()" class="space-y-4">
+    <p-dialog [(visible)]="displayPermissionsDialog" [modal]="true" [closable]="false" [closeOnEscape]="false" [style]="{ width: '550px' }" header="Gestión de Permisos">
+      @if (selectedUserForPermissions()) {
+      <div class="space-y-4">
          <div class="text-center mb-4">
             <strong class="block">{{selectedUserForPermissions()?.name}}</strong>
             <small class="text-secondary">{{selectedUserForPermissions()?.email}}</small>
          </div>
          
+         <!-- Scope selector: Global or per-group -->
+         <div>
+            <label class="block text-sm mb-2">Alcance de permisos</label>
+            <p-select [options]="permissionScopes()" [(ngModel)]="selectedPermissionScope" optionLabel="label" optionValue="value" placeholder="Seleccionar alcance" styleClass="w-full" (onChange)="onScopeChange()"></p-select>
+         </div>
+
          <div>
             <label class="block text-sm mb-2">Rol</label>
             <select class="p-inputtext w-full" [(ngModel)]="permissionEditState" (ngModelChange)="onRoleChange($event)">
-              <option value="Usuario">Usuario</option>
-              <option value="Dev">Dev</option>
-              <option value="Admin">Admin</option>
-              <option value="Superadmin">Superadmin</option>
+              <option value="user">Usuario</option>
+              <option value="admin">Admin</option>
+              <option value="superadmin">Superadmin</option>
             </select>
          </div>
 
@@ -115,10 +130,13 @@ import { HttpService } from '../../../services/http.service';
          </div>
          
          <div class="flex justify-end gap-2 mt-4">
-            <p-button label="Cancelar" severity="secondary" (click)="displayPermissionsDialog = false"></p-button>
-            <p-button label="Guardar" (click)="savePermissions()"></p-button>
+            <button type="button" class="btn-cancel" (click)="displayPermissionsDialog = false">Cancelar</button>
+            <button type="button" class="btn-save" [disabled]="saving" (click)="savePermissions()">
+              {{ saving ? 'Guardando...' : 'Guardar' }}
+            </button>
          </div>
       </div>
+      }
     </p-dialog>
   `,
   styles: [`
@@ -140,6 +158,26 @@ import { HttpService } from '../../../services/http.service';
     .space-y-4 > * + * { margin-top: 1rem; }
     .block { display: block; }
     .cursor-pointer { cursor: pointer; }
+    .btn-cancel {
+      padding: 0.5rem 1rem;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    .btn-cancel:hover { background: #1e293b; }
+    .btn-save {
+      padding: 0.5rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      background: #6366f1;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-save:hover { background: #4f46e5; }
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
     .text-xs { font-size: 0.75rem; }
     .text-sm { font-size: 0.875rem; }
     .text-center { text-align: center; }
@@ -155,21 +193,44 @@ export class UserSettingsComponent implements OnInit {
   httpService = inject(HttpService);
 
   users = signal<any[]>([]);
+  availableGroups = signal<any[]>([]);
   displayUserDialog = false;
   displayPermissionsDialog = false;
+  saving = false;
   newUser = signal<Partial<User>>({ role: 'user', permissions: [], groups: [] });
-  selectedUserForPermissions = signal<User | null>(null);
+  selectedUserForPermissions = signal<any>(null);
   
   permissionEditState: string = 'user';
   permissionEditStateArray: Permission[] = [];
+  selectedPermissionScope: string = 'global';
   allPermissionsList = ALL_PERMISSIONS;
+
+  permissionScopes = signal<{ label: string; value: string }[]>([
+    { label: 'Global (todos los grupos)', value: 'global' }
+  ]);
 
   ngOnInit() {
     this.loadUsers();
+    this.loadGroups();
+  }
+
+  loadGroups() {
+    this.httpService.getGroups().subscribe({
+      next: (response) => {
+        const groups = response.data.map((g: any) => ({
+          id: g.uuid || g.id,
+          name: g.name
+        }));
+        this.availableGroups.set(groups);
+        this.permissionScopes.set([
+          { label: 'Global (todos los grupos)', value: 'global' },
+          ...groups.map((g: any) => ({ label: `Grupo: ${g.name}`, value: g.id }))
+        ]);
+      }
+    });
   }
 
   loadUsers() {
-    // Load all users from backend
     this.httpService.getUsers().subscribe({
       next: (response) => {
         const mappedUsers = response.data.map((u: any) => ({
@@ -178,7 +239,8 @@ export class UserSettingsComponent implements OnInit {
           email: u.email,
           role: u.role,
           permissions: (u.permissions || []) as any,
-          groups: (u.groups || []).map((g: any) => g.id || g),
+          permissionsByGroup: u.permissionsByGroup || {},
+          groups: (u.groups || []).map((g: any) => g.uuid || g.id || g),
           avatarUrl: u.avatar_url || '',
           age: u.age,
           phone: u.phone
@@ -197,16 +259,28 @@ export class UserSettingsComponent implements OnInit {
   }
 
   saveUser() {
-    // Users are created through registration, not here for now
-    alert('Users are created through the registration process');
+    alert('Los usuarios se crean a través del proceso de registro');
     this.displayUserDialog = false;
   }
 
-  openPermissionsDialog(user: User) {
+  openPermissionsDialog(user: any) {
     this.selectedUserForPermissions.set(user);
     this.permissionEditState = user.role;
-    this.permissionEditStateArray = [...user.permissions];
+    this.selectedPermissionScope = 'global';
+    this.permissionEditStateArray = [...(user.permissions || [])];
     this.displayPermissionsDialog = true;
+  }
+
+  onScopeChange() {
+    const user = this.selectedUserForPermissions();
+    if (!user) return;
+
+    if (this.selectedPermissionScope === 'global') {
+      this.permissionEditStateArray = [...(user.permissions || [])];
+    } else {
+      const groupPerms = user.permissionsByGroup?.[this.selectedPermissionScope] || [];
+      this.permissionEditStateArray = [...groupPerms];
+    }
   }
 
   onRoleChange(newRole: string) {
@@ -216,14 +290,59 @@ export class UserSettingsComponent implements OnInit {
   }
 
   savePermissions() {
-    // Permissions would be saved to backend here
-    this.displayPermissionsDialog = false;
+    const user = this.selectedUserForPermissions();
+    if (!user) {
+      return;
+    }
+
+    this.saving = true;
+    const groupId = this.selectedPermissionScope === 'global' ? undefined : this.selectedPermissionScope;
+
+    this.httpService.updateUserPermissions(
+      user.id,
+      this.permissionEditStateArray,
+      this.permissionEditState,
+      groupId
+    ).subscribe({
+      next: (response) => {
+        this.saving = false;
+        this.displayPermissionsDialog = false;
+        this.loadUsers();
+
+        // If editing own user, update current state
+        if (user.id === this.state.currentUser().id) {
+          const data = response.data;
+          this.state.currentUser.update(u => ({
+            ...u,
+            role: data.role || u.role,
+            permissions: data.permissions || u.permissions,
+            permissionsByGroup: data.permissionsByGroup || u.permissionsByGroup
+          }));
+        }
+      },
+      error: (err) => {
+        this.saving = false;
+        console.error('Error saving permissions:', err);
+        alert('Error al guardar permisos: ' + (err.error?.data?.message || err.message || 'Intenta de nuevo'));
+      }
+    });
   }
 
   deleteUser(userId: string) {
-    if (confirm('¿Eliminar este usuario?')) {
-      // Would delete from backend
-      this.loadUsers();
+    if (userId === this.state.currentUser().id) {
+      alert('No puedes eliminarte a ti mismo.');
+      return;
+    }
+    if (confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')) {
+      this.httpService.deleteUser(userId).subscribe({
+        next: () => {
+          this.loadUsers();
+        },
+        error: (err) => {
+          console.error('Error deleting user:', err);
+          alert('Error al eliminar usuario: ' + (err.message || 'Intenta de nuevo'));
+        }
+      });
     }
   }
 }

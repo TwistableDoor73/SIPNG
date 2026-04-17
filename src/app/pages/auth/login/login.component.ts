@@ -128,7 +128,6 @@ export class LoginComponent {
     }).subscribe({
       next: (response) => {
         if (response.data?.token) {
-          localStorage.setItem('auth_token', response.data.token);
           const userData = response.data.user;
           this.state.currentUser.set({
             id: userData.id,
@@ -136,6 +135,7 @@ export class LoginComponent {
             email: userData.email,
             role: userData.role,
             permissions: (userData.permissions || []) as any,
+            permissionsByGroup: (userData.permissionsByGroup || {}) as any,
             groups: (userData.groups || []).map((g: any) => g.id || g),
             avatarUrl: userData.avatarUrl || '',
             age: userData.age || 0,
@@ -173,7 +173,6 @@ export class LoginComponent {
     }).subscribe({
       next: (response) => {
         if (response.data?.token) {
-          localStorage.setItem('auth_token', response.data.token);
           const userData = response.data.user;
           this.state.currentUser.set({
             id: userData.id,

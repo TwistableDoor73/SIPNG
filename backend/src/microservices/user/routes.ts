@@ -2,25 +2,25 @@ import Fastify from 'fastify';
 // JWT handling is done via gateway middleware
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import pool from '../../db/connection.ts';
+import pool from '../../db/connection.js';
 import { 
   createToken, 
   verifyToken, 
   type TokenPayload 
-} from '../../utils/jwt.ts';
+} from '../../utils/jwt.js';
 import { 
   hashPassword, 
   comparePassword 
-} from '../../utils/crypto.ts';
+} from '../../utils/crypto.js';
 import { 
   createResponse, 
   ApiError, 
   OP_CODES 
-} from '../../utils/response.ts';
+} from '../../utils/response.js';
 import { 
   schemas, 
   validateSchema 
-} from '../../utils/schemas.ts';
+} from '../../utils/schemas.js';
 
 const app = Fastify({
   logger: true,
@@ -72,17 +72,35 @@ app.post<{ Body: any }>('/auth/login', async (request, reply) => {
 
     // Get user permissions and groups
     const permResult = await pool.query(
-      `SELECT DISTINCT permission FROM user_permissions WHERE user_id = $1`,
+      `SELECT permission, group_id FROM user_permissions WHERE user_id = $1`,
       [user.id]
     );
 
     const groupResult = await pool.query(
-      `SELECT group_id FROM group_members WHERE user_id = $1`,
+      `SELECT g.uuid, g.id, g.name FROM groups g
+       INNER JOIN group_members gm ON g.id = gm.group_id
+       WHERE gm.user_id = $1`,
       [user.id]
     );
 
-    const permissions = permResult.rows.map((p: any) => p.permission);
-    const groups = groupResult.rows.map((g: any) => g.group_id.toString());
+    // Build global permissions (group_id IS NULL)
+    const permissions = permResult.rows
+      .filter((p: any) => p.group_id === null)
+      .map((p: any) => p.permission);
+
+    // Build per-group permissions (group_id IS NOT NULL)
+    const permissionsByGroup: Record<string, string[]> = {};
+    for (const row of permResult.rows) {
+      if (row.group_id !== null) {
+        const grp = groupResult.rows.find((g: any) => g.id === row.group_id);
+        if (grp) {
+          if (!permissionsByGroup[grp.uuid]) permissionsByGroup[grp.uuid] = [];
+          permissionsByGroup[grp.uuid].push(row.permission);
+        }
+      }
+    }
+
+    const groups = groupResult.rows.map((g: any) => g.uuid);
 
     const token = createToken({
       userId: user.uuid,
@@ -102,6 +120,7 @@ app.post<{ Body: any }>('/auth/login', async (request, reply) => {
           email: user.email,
           role: user.role,
           permissions,
+          permissionsByGroup,
           groups,
         },
       })
@@ -200,7 +219,7 @@ app.get('/users', async (request, reply) => {
     const users = await Promise.all(
       result.rows.map(async (user: any) => {
         const permResult = await pool.query(
-          `SELECT DISTINCT permission FROM user_permissions WHERE user_id = $1`,
+          `SELECT permission, group_id FROM user_permissions WHERE user_id = $1`,
           [user.id]
         );
 
@@ -211,10 +230,26 @@ app.get('/users', async (request, reply) => {
           [user.id]
         );
 
+        const globalPerms = permResult.rows
+          .filter((p: any) => p.group_id === null)
+          .map((p: any) => p.permission);
+
+        const permsByGroup: Record<string, string[]> = {};
+        for (const row of permResult.rows) {
+          if (row.group_id !== null) {
+            const grp = groupResult.rows.find((g: any) => g.id === row.group_id);
+            if (grp) {
+              if (!permsByGroup[grp.uuid]) permsByGroup[grp.uuid] = [];
+              permsByGroup[grp.uuid].push(row.permission);
+            }
+          }
+        }
+
         return {
           ...user,
           uuid: user.uuid,
-          permissions: permResult.rows.map((p: any) => p.permission),
+          permissions: globalPerms,
+          permissionsByGroup: permsByGroup,
           groups: groupResult.rows
         };
       })
@@ -228,6 +263,162 @@ app.get('/users', async (request, reply) => {
     reply.status(500).send(
       createResponse(500, OP_CODES.SxGN500, null)
     );
+  }
+});
+
+// PUT /users/:id/permissions — Save permissions (global or per-group)
+app.put<{ Params: { id: string }; Body: any }>('/users/:id/permissions', async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const { permissions, groupId, role } = request.body as { permissions: string[]; groupId?: string; role?: string };
+
+    if (!permissions || !Array.isArray(permissions)) {
+      throw new ApiError(400, 'SxUS400', 'permissions must be an array');
+    }
+
+    // Find user by UUID
+    const userResult = await pool.query(
+      'SELECT id, uuid, role FROM users WHERE uuid = $1',
+      [id]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new ApiError(404, 'SxUS404', 'User not found');
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Update role if provided
+    if (role) {
+      await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role.toLowerCase(), userId]);
+    }
+
+    // Resolve groupId (UUID → numeric) if provided
+    let numericGroupId: number | null = null;
+    if (groupId) {
+      const groupResult = await pool.query('SELECT id FROM groups WHERE uuid = $1', [groupId]);
+      if (groupResult.rows.length === 0) {
+        throw new ApiError(404, 'SxGP404', 'Group not found');
+      }
+      numericGroupId = groupResult.rows[0].id;
+    }
+
+    // Delete existing permissions for this user+group scope
+    if (numericGroupId) {
+      await pool.query(
+        'DELETE FROM user_permissions WHERE user_id = $1 AND group_id = $2',
+        [userId, numericGroupId]
+      );
+    } else {
+      await pool.query(
+        'DELETE FROM user_permissions WHERE user_id = $1 AND group_id IS NULL',
+        [userId]
+      );
+    }
+
+    // Insert new permissions
+    if (permissions.length > 0) {
+      const values = permissions.map((_, i) => {
+        const base = i * 3;
+        return `($${base + 1}, $${base + 2}, $${base + 3})`;
+      }).join(', ');
+
+      const params = permissions.flatMap(p => [userId, numericGroupId, p]);
+
+      await pool.query(
+        `INSERT INTO user_permissions (user_id, group_id, permission) VALUES ${values}
+         ON CONFLICT (user_id, group_id, permission) DO NOTHING`,
+        params
+      );
+    }
+
+    // Return updated permissions for this user
+    const permResult = await pool.query(
+      `SELECT permission, group_id FROM user_permissions WHERE user_id = $1`,
+      [userId]
+    );
+
+    const globalPerms = permResult.rows
+      .filter((p: any) => p.group_id === null)
+      .map((p: any) => p.permission);
+
+    const permsByGroup: Record<string, string[]> = {};
+    for (const row of permResult.rows) {
+      if (row.group_id !== null) {
+        // Get group UUID
+        const gRes = await pool.query('SELECT uuid FROM groups WHERE id = $1', [row.group_id]);
+        const gUuid = gRes.rows[0]?.uuid;
+        if (gUuid) {
+          if (!permsByGroup[gUuid]) permsByGroup[gUuid] = [];
+          permsByGroup[gUuid].push(row.permission);
+        }
+      }
+    }
+
+    reply.send(
+      createResponse(200, 'SxUS200', {
+        permissions: globalPerms,
+        permissionsByGroup: permsByGroup,
+        role: role?.toLowerCase() || userResult.rows[0].role
+      })
+    );
+  } catch (err: any) {
+    app.log.error(err);
+    if (err instanceof ApiError) {
+      reply.status(err.statusCode).send(
+        createResponse(err.statusCode, err.intOpCode, null)
+      );
+    } else {
+      reply.status(500).send(
+        createResponse(500, OP_CODES.SxGN500, null)
+      );
+    }
+  }
+});
+
+// DELETE user
+app.delete<{ Params: { id: string } }>('/users/:id', async (request, reply) => {
+  try {
+    const { id } = request.params;
+
+    // Find user by UUID
+    const userResult = await pool.query(
+      'SELECT id, uuid, email FROM users WHERE uuid = $1',
+      [id]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new ApiError(404, 'SxUS404', 'User not found');
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Delete related data in order (foreign keys)
+    await pool.query('DELETE FROM user_permissions WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM group_members WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM ticket_comments WHERE author_id = $1', [userId]);
+    await pool.query('DELETE FROM ticket_history WHERE author_id = $1', [userId]);
+    // Unassign tickets assigned to this user
+    await pool.query('UPDATE tickets SET assigned_to_id = NULL WHERE assigned_to_id = $1', [userId]);
+    // Delete tickets created by this user
+    await pool.query('DELETE FROM tickets WHERE creator_id = $1', [userId]);
+    // Delete the user
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    reply.send(
+      createResponse(200, 'SxUS200', { deleted: true })
+    );
+  } catch (err: any) {
+    app.log.error(err);
+    if (err instanceof ApiError) {
+      reply.status(err.statusCode).send(
+        createResponse(err.statusCode, err.intOpCode, null)
+      );
+    } else {
+      reply.status(500).send(
+        createResponse(500, OP_CODES.SxGN500, null)
+      );
+    }
   }
 });
 

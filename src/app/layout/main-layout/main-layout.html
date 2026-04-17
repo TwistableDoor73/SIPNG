@@ -37,13 +37,15 @@
         <button class="nav-item" [class.active]="activeTab === 'list'" routerLink="/tickets/list">
           <i class="pi pi-list"></i> Lista
         </button>
+        @if (state.hasPermission('group:edit') || state.hasPermission('group:delete') || state.hasPermission('group:add_member') || state.hasPermission('group:remove_member')) {
         <button class="nav-item" [class.active]="activeTab === 'group-settings'" routerLink="/groups/settings">
           <i class="pi pi-cog"></i> Configuración
         </button>
+        }
       </nav>
       }
 
-      @if (state.currentUser().role === 'Superadmin' || state.currentUser().permissions.includes('user:view')) {
+      @if (state.currentUser().role === 'superadmin' || state.hasPermission('user:view')) {
       <div class="nav-section-title mt-4">SISTEMA</div>
       <nav class="sidebar-nav">
         <button class="nav-item user-settings-tab" [class.active]="activeTab === 'user-settings'"
@@ -59,8 +61,12 @@
         <div class="user-avatar-small" [style.backgroundImage]="'url(' + state.currentUser().avatarUrl + ')'"></div>
         <div class="user-info-text">
           <strong>{{state.currentUser().name}}</strong><br>
-          <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions.length}}
-            permisos</span>
+          @if (state.currentUser().role === 'superadmin') {
+            <span class="text-secondary" style="font-size: 0.7rem;">Superadmin</span>
+          } @else {
+            <span class="text-secondary" style="font-size: 0.7rem;">{{state.currentUser().permissions.length}}
+              permisos</span>
+          }
         </div>
       </div>
       <button class="logout-btn" (click)="logout()" title="Cerrar sesión">

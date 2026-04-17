@@ -58,9 +58,9 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
               <td class="font-semibold" style="color: #6366f1">{{ticket.title}}</td>
               <td class="text-center"><span class="status-indicator {{'status-' + ticket.status.toLowerCase().replace(' ', '-')}}">{{ticket.status}}</span></td>
               <td>
-                 <span *ngIf="ticket.priority === 'Alta'" class="text-red-500 font-bold text-sm">crítica</span>
-                 <span *ngIf="ticket.priority === 'Media'" class="text-green-500 font-bold text-sm">media</span>
-                 <span *ngIf="ticket.priority === 'Baja'" class="text-yellow-500 font-bold text-sm">baja</span>
+                 <span *ngIf="ticket.priority === 'high' || ticket.priority === 'urgent'" class="text-red-500 font-bold text-sm">crítica</span>
+                 <span *ngIf="ticket.priority === 'medium'" class="text-green-500 font-bold text-sm">media</span>
+                 <span *ngIf="ticket.priority === 'low'" class="text-yellow-500 font-bold text-sm">baja</span>
               </td>
               <td>
                  <div class="flex-row-center gap-2">
@@ -114,7 +114,7 @@ export class ListComponent {
       } else if (filter === 'sin_asignar') {
         tickets = tickets.filter(t => !t.assignedTo || t.assignedTo === 'Sin asignar');
       } else if (filter === 'alta_prioridad') {
-        tickets = tickets.filter(t => t.priority === 'Alta');
+        tickets = tickets.filter(t => t.priority === 'high' || t.priority === 'urgent');
       }
 
       // Ordenar resultados

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
@@ -9,7 +9,9 @@ import { SelectModule } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
-import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../services/app-state.service';
+import { DatePickerModule } from 'primeng/datepicker';
+import { AppStateService, TicketStatus, TicketPriority } from '../../../services/app-state.service';
+import { HttpService } from '../../../services/http.service';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -24,7 +26,8 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
     SelectModule, 
     ButtonModule,
     DividerModule,
-    TagModule
+    TagModule,
+    DatePickerModule
   ],
   template: `
     <p-dialog 
@@ -142,18 +145,47 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
               <div class="field mb-4">
                 <label class="block mb-2 font-bold text-secondary">Asignado a</label>
                 <p-select 
-                   [options]="state.groupMembers()" 
-                   optionLabel="name" 
-                   optionValue="email"
-                   [(ngModel)]="editData.assignedTo" 
+                   [options]="memberOptions()" 
+                   optionLabel="label" 
+                   optionValue="value"
+                   [(ngModel)]="editData.assignedToUuid" 
                    styleClass="w-full" 
                    [disabled]="!canEditFull()"
                    placeholder="Sin asignar"
+                   [showClear]="true"
+                   [filter]="true"
+                   filterBy="label"
                    appendTo="body"
                 ></p-select>
                 @if (canEditFull()) {
-                  <small class="cursor-pointer text-primary" (click)="editData.assignedTo = state.currentUser().email">Asignarme a mí</small>
+                  <small class="cursor-pointer text-primary" (click)="editData.assignedToUuid = state.currentUser().id">Asignarme a mí</small>
                 }
+              </div>
+
+              <div class="field mb-4">
+                <label class="block mb-2 font-bold text-secondary">Fecha de inicio</label>
+                <p-datepicker
+                  [(ngModel)]="editData.startDate"
+                  [showClear]="true"
+                  [disabled]="!canEditFull()"
+                  dateFormat="dd/mm/yy"
+                  placeholder="Sin fecha"
+                  styleClass="w-full"
+                  appendTo="body"
+                ></p-datepicker>
+              </div>
+
+              <div class="field mb-4">
+                <label class="block mb-2 font-bold text-secondary">Fecha de finalización</label>
+                <p-datepicker
+                  [(ngModel)]="editData.endDate"
+                  [showClear]="true"
+                  [disabled]="!canEditFull()"
+                  dateFormat="dd/mm/yy"
+                  placeholder="Sin fecha"
+                  styleClass="w-full"
+                  appendTo="body"
+                ></p-datepicker>
               </div>
 
               <div class="metadata-info mt-4 p-3 border-round bg-black-alpha-20" style="background: rgba(0,0,0,0.2); border-radius: 8px;">
@@ -167,7 +199,7 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
                 </div>
                 <div>
                   <small class="block text-secondary" style="display: block; opacity: 0.7;">Fecha límite</small>
-                  <span>{{ticket()?.dueDate | date:'mediumDate'}}</span>
+                  <span>{{ticket()?.dueDate ? (ticket()?.dueDate | date:'mediumDate') : 'Sin fecha'}}</span>
                 </div>
               </div>
               
@@ -202,18 +234,28 @@ import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../
 })
 export class TicketDetailComponent {
   state = inject(AppStateService);
+  httpService = inject(HttpService);
 
   ticket = this.state.selectedTicket;
   
-  statusOptions: TicketStatus[] = ['Pendiente', 'En Progreso', 'Revisión', 'Hecho', 'Bloqueado'];
-  priorityOptions: TicketPriority[] = ['Baja', 'Media', 'Alta'];
+  statusOptions: TicketStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
+  priorityOptions: TicketPriority[] = ['low', 'medium', 'high', 'urgent'];
+
+  memberOptions = computed(() => {
+    return this.state.groupMembers().map((m: any) => ({
+      label: `${m.name} (${m.email})`,
+      value: m.uuid
+    }));
+  });
 
   editData: any = {
     title: '',
     description: '',
     status: '',
     priority: '',
-    assignedTo: ''
+    assignedToUuid: '',
+    startDate: null as Date | null,
+    endDate: null as Date | null
   };
 
   newCommentText = '';
@@ -227,7 +269,9 @@ export class TicketDetailComponent {
           description: t.description,
           status: t.status,
           priority: t.priority,
-          assignedTo: t.assignedTo
+          assignedToUuid: t.assignedToUuid || '',
+          startDate: t.startDate ? new Date(t.startDate) : null,
+          endDate: t.endDate ? new Date(t.endDate) : null
         };
       }
     });
@@ -243,7 +287,7 @@ export class TicketDetailComponent {
     const t = this.ticket();
     if (!t) return false;
     const user = this.state.currentUser();
-    return t.creator === user.email || t.assignedTo === user.email;
+    return t.creator === user.email || t.assignedToUuid === user.id;
   }
 
   hasChanges(): boolean {
@@ -253,14 +297,57 @@ export class TicketDetailComponent {
            this.editData.description !== t.description ||
            this.editData.status !== t.status ||
            this.editData.priority !== t.priority ||
-           this.editData.assignedTo !== t.assignedTo;
+           (this.editData.assignedToUuid || '') !== (t.assignedToUuid || '') ||
+           this.dateChanged(this.editData.startDate, t.startDate) ||
+           this.dateChanged(this.editData.endDate, t.endDate);
+  }
+
+  private dateChanged(editDate: Date | null, origDate: Date | null): boolean {
+    if (!editDate && !origDate) return false;
+    if (!editDate || !origDate) return true;
+    return new Date(editDate).toDateString() !== new Date(origDate).toDateString();
   }
 
   save() {
     const t = this.ticket();
-    if (t) {
-      this.state.updateTicket(t.id, { ...this.editData });
+    if (!t) return;
+
+    const backendUpdates: any = {};
+
+    if (this.editData.title !== t.title) backendUpdates.title = this.editData.title;
+    if (this.editData.description !== t.description) backendUpdates.description = this.editData.description;
+    if (this.editData.status !== t.status) backendUpdates.status = this.editData.status;
+    if (this.editData.priority !== t.priority) backendUpdates.priority = this.editData.priority;
+    if ((this.editData.assignedToUuid || '') !== (t.assignedToUuid || '')) {
+      backendUpdates.assignedToId = this.editData.assignedToUuid || null;
     }
+    if (this.dateChanged(this.editData.startDate, t.startDate)) {
+      backendUpdates.startDate = this.editData.startDate || null;
+    }
+    if (this.dateChanged(this.editData.endDate, t.endDate)) {
+      backendUpdates.endDate = this.editData.endDate || null;
+    }
+
+    if (Object.keys(backendUpdates).length === 0) return;
+
+    this.httpService.updateTicket(t.id, backendUpdates).subscribe({
+      next: (res) => {
+        // Find the assigned user name from members
+        const assignedMember = this.state.groupMembers().find((m: any) => m.uuid === this.editData.assignedToUuid);
+        // Update local state
+        this.state.updateTicket(t.id, {
+          ...this.editData,
+          assignedTo: assignedMember?.email || '',
+          assignedToName: assignedMember?.name || '',
+          assignedToUuid: this.editData.assignedToUuid || '',
+          startDate: this.editData.startDate,
+          endDate: this.editData.endDate
+        });
+      },
+      error: (err) => {
+        console.error('Error updating ticket:', err);
+      }
+    });
   }
 
   postComment() {

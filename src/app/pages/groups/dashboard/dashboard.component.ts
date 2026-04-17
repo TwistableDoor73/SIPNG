@@ -1,9 +1,10 @@
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../services/app-state.service';
+import { HttpService } from '../../../services/http.service';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
@@ -144,8 +145,8 @@ import { TicketDetailComponent } from '../../tickets/detail/ticket-detail.compon
             <label for="assigned" class="font-semibold" style="font-weight: 600;">Asignado a</label>
             <select id="assigned" class="p-inputtext p-component w-full" [(ngModel)]="newTicket().assignedTo">
               <option value="">Sin asignar</option>
-              @for(user of state.groupMembers(); track user.id) {
-                <option [value]="user.email">{{user.name}}</option>
+              @for(user of state.groupMembers(); track user.uuid) {
+                <option [value]="user.uuid">{{user.name}} ({{user.email}})</option>
               }
             </select>
             <div style="display: flex; justify-content: flex-end;">
@@ -163,29 +164,77 @@ import { TicketDetailComponent } from '../../tickets/detail/ticket-detail.compon
     </div>
   `
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   state = inject(AppStateService);
   router = inject(Router);
+  httpService = inject(HttpService);
 
-  pendingTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'Pendiente'));
-  inProgressTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'En Progreso'));
-  reviewTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'Revisión'));
-  doneTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'Hecho'));
+  pendingTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'todo'));
+  inProgressTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'in_progress'));
+  reviewTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'in_review'));
+  doneTickets = computed(() => this.state.groupTickets().filter(t => t.status === 'done'));
 
   myRecentTickets = computed(() => {
     return this.state.groupTickets().filter(t => t.assignedTo === this.state.currentUser().email).slice(0, 3);
   });
 
+  ngOnInit() {
+    this.loadTicketsFromBackend();
+    this.loadGroupMembers();
+  }
+
+  loadGroupMembers() {
+    const groupId = this.state.selectedGroup()?.id;
+    if (!groupId) return;
+    this.httpService.getGroup(groupId).subscribe({
+      next: (res) => {
+        if (res.data && (res.data as any).members) {
+          this.state.groupMembers.set((res.data as any).members);
+        }
+      },
+      error: (err) => console.error('Error loading group members:', err)
+    });
+  }
+
+  loadTicketsFromBackend() {
+    const groupId = this.state.selectedGroup()?.id;
+    if (!groupId) return;
+    this.httpService.getTickets(groupId).subscribe({
+      next: (response) => {
+        const mapped = response.data.map((t: any) => ({
+          id: t.uuid || t.id,
+          title: t.title,
+          description: t.description || '',
+          status: t.status as TicketStatus,
+          priority: t.priority as TicketPriority,
+          creator: t.creator_email || t.creator || '',
+          assignedTo: t.assigned_to_email || t.assignedTo || '',
+          assignedToUuid: t.assigned_to_uuid || '',
+          assignedToName: t.assigned_to_name || '',
+          groupId: groupId,
+          dueDate: t.due_date ? new Date(t.due_date) : null,
+          startDate: t.start_date ? new Date(t.start_date) : null,
+          endDate: t.end_date ? new Date(t.end_date) : null,
+          createdAt: t.created_at ? new Date(t.created_at) : new Date(),
+          comments: t.comments || [],
+          history: t.history || []
+        }));
+        this.state.allTickets.set(mapped);
+      },
+      error: (err) => console.error('Error loading tickets:', err)
+    });
+  }
+
   isCreateTicketDialogVisible = signal(false);
 
-  statusOptions: TicketStatus[] = ['Pendiente', 'En Progreso', 'Revisión', 'Hecho', 'Bloqueado'];
-  priorityOptions: TicketPriority[] = ['Baja', 'Media', 'Alta'];
+  statusOptions: TicketStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
+  priorityOptions: TicketPriority[] = ['low', 'medium', 'high', 'urgent'];
 
   newTicket = signal<Partial<Ticket>>({
     title: '',
     description: '',
-    status: 'Pendiente',
-    priority: 'Media',
+    status: 'todo',
+    priority: 'medium',
     assignedTo: ''
   });
 
@@ -203,15 +252,15 @@ export class DashboardComponent {
     this.newTicket.set({
       title: '',
       description: '',
-      status: 'Pendiente',
-      priority: 'Media',
+      status: 'todo',
+      priority: 'medium',
       assignedTo: ''
     });
     this.isCreateTicketDialogVisible.set(true);
   }
 
   assignToMe() {
-    this.newTicket.update(t => ({ ...t, assignedTo: this.state.email() }));
+    this.newTicket.update(t => ({ ...t, assignedTo: this.state.currentUser().id }));
   }
 
   saveNewTicket() {
@@ -219,31 +268,24 @@ export class DashboardComponent {
     const t = this.newTicket();
     if (!t.title) return;
 
-    const newId = 'T-' + Math.floor(Math.random() * 10000);
-    const ticket: Ticket = {
-      id: newId,
+    const groupId = this.state.selectedGroup()?.id || '';
+
+    this.httpService.createTicket({
       title: t.title,
       description: t.description || '',
-      status: t.status as TicketStatus || 'Pendiente',
-      priority: t.priority as TicketPriority || 'Media',
-      assignedTo: t.assignedTo || 'Sin asignar',
-      creator: this.state.email(),
-      groupId: this.state.selectedGroup()?.id || '',
-      comments: [],
-      history: [{
-        author: this.state.email(),
-        action: 'Creó el ticket',
-        date: new Date()
-      }],
-      createdAt: new Date(),
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 7))
-    };
-
-    this.state.allTickets.update(tickets => [...tickets, ticket]);
-    this.isCreateTicketDialogVisible.set(false);
-
-    // Al guardar, el ticket se inserta en la base, se muestra en el tablero y se muestra su detalle.
-    // Para mostrar el detalle abrimos el alert o modal de detalles que ya esté definido.
-    this.state.selectedTicketId.set(ticket.id);
+      status: (t.status as string) || 'todo',
+      priority: (t.priority as string) || 'medium',
+      assignedToId: t.assignedTo || undefined,
+      groupId: groupId,
+    } as any).subscribe({
+      next: () => {
+        this.isCreateTicketDialogVisible.set(false);
+        this.loadTicketsFromBackend();
+      },
+      error: (err) => {
+        console.error('Error creating ticket:', err);
+        alert('Error al crear el ticket: ' + (err.message || 'Intenta de nuevo'));
+      }
+    });
   }
 }

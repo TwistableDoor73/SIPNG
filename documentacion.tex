@@ -1,0 +1,236 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{setspace}
+\usepackage{titlesec}
+
+\geometry{left=2.5cm, right=2.5cm, top=3cm, bottom=3cm}
+\spacing{1.5}
+
+\begin{document}
+
+% -------------------------
+% PORTADA
+% -------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Huge \bfseries Documentación Técnica del Sistema Integrado SIPNG\par}
+    \vspace{1.5cm}
+    
+    {\Large Desarrollo e Implementación de un Sistema Web de Gestión Basado en Microservicios\par}
+    \vspace{2cm}
+    
+    {\Large \bfseries Autor:\par}
+    {\Large Jesus Efrain Bocanegra Mata\par}
+    \vspace{1.5cm}
+    
+    {\Large \bfseries Docente / Asesor:\par}
+    {\Large [Nombre completo y grado del docente]\par} % Reemplazar por el nombre del docente
+    \vspace{2cm}
+    
+    \vfill
+    {\large \today\par}
+\end{titlepage}
+
+% -------------------------
+% ÍNDICE
+% -------------------------
+\tableofcontents
+\newpage
+
+% -------------------------
+% INTRODUCCIÓN
+% -------------------------
+\chapter{Introducción}
+
+El desarrollo web moderno ha evolucionado considerablemente en los últimos años, alejándose de los sistemas monolíticos tradicionales para dar paso a arquitecturas más escalables, distribuidas y resilientes. En el corazón de esta evolución se encuentra la necesidad creciente de construir plataformas de software que no solo manejen grandes volúmenes de usuarios, sino que también permitan a diferentes equipos de desarrollo iterar de forma rápida y segura sobre secciones individuales de la aplicación. Es en este contexto de innovación donde surgen soluciones tecnológicas avanzadas, combinando librerías modernas de interfaz de usuario con servicios interconectados a través de la red, facilitando una escalabilidad horizontal y un mantenimiento orgánico.
+
+Este proyecto, denominado SIPNG, nace como una solución integral de gestión que abarca el control de espacios de trabajo, administración de usuarios y la trazabilidad de tickets de soporte. El objetivo fundamental del sistema es proporcionar una plataforma colaborativa donde los administradores y usuarios puedan operar de manera transparente y eficiente. Para resolver las problemáticas típicas de concurrencia y despliegue continuo, se optó por un diseño fragmentado y atómico, delegando las responsabilidades de procesamiento de información a diferentes módulos o microservicios, de modo que cada componente sea independiente y altamente cohesivo en su propósito.
+
+A nivel arquitectónico, el sistema está profundamente segregado. Por el lado del cliente (Frontend), se ha implementado la robustez de Angular, aprovechando sus capacidades reactivas con el uso de Signals, componentes independientes (Standalone Components) y librerías visuales como PrimeNG para garantizar una experiencia de usuario (UX) rica e intuitiva. Por otro lado, la lógica de negocios y la persistencia (Backend) opera bajo un entorno de Node.js mediante el framework Fastify, estructurado en diversos microservicios. Esta división entre Frontend y Backend favorece una clara separación de preocupaciones, permitiendo a ambas partes escalar y consumir recursos de acuerdo a su propia demanda.
+
+Uno de los pilares de este proyecto es la integración plena en entornos de nube pública que facilitan el Continuous Deployment (CD). La capa de persistencia (Base de datos) está delegada a Supabase, ofreciendo la escalabilidad de PostgreSQL con herramientas avanzadas para roles y políticas. Simultáneamente, los microservicios se encuentran desplegados en Railway, garantizando que procesos pesados de Node.js se mantengan aislados pero interconectados sin fricción. Finalmente, toda la capa visual de Angular ha sido enviada y desplegada en Vercel, optimizando tiempos de respuesta gracias a redes de entrega de contenidos (CDN) a nivel global, eliminando latencias e impulsando el rendimiento de los activos del lado del cliente.
+
+El presente documento proporcionará una visión extensiva sobre la construcción y despliegue del sistema SIPNG. En el capítulo de Desarrollo se expondrán exhaustivamente las interfaces gráficas elaboradas y su construcción analítica, el detalle de cada microservicio en el Backend, así como el protocolo de comunicación y operación algorítmica entre cada capa. Posteriormente, se ofrecerán modelos conceptuales que servirán de referencia visual a esta arquitectura. El recorrido culmina con una serie de conclusiones que sintetizan los hallazgos tras la integración tecnológica y una proyección metodológica de los beneficios obtenidos por el uso de infraestructura en la nube.
+
+% -------------------------
+% DESARROLLO
+% -------------------------
+\chapter{Desarrollo}
+
+\section{Arquitectura General del Sistema}
+El desarrollo del proyecto SIPNG requirió una estructura cuidadosamente planificada. La arquitectura implementada se compone de tres grandes bloques interconectados: la interfaz de usuario en Angular (Frontend), un ecosistema de microservicios desarrollados en Node.js mediante Fastify (Backend) y una capa de persistencia en la nube utilizando Supabase. 
+
+Esta arquitectura permite que cada uno de los microservicios se dedique a tareas atómicas, como la gestión de tickets, la gestión de grupos o autenticación de usuarios.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[node distance=2cm, auto, thick, scale=0.8, transform shape]
+        % Nodes
+        \node (frontend) [draw, rectangle, minimum width=3cm, minimum height=1.5cm, fill=blue!10] {Frontend (Vercel)};
+        \node (gateway) [draw, rectangle, minimum width=3cm, minimum height=1.5cm, fill=orange!10, right of=frontend, node distance=5cm] {API Gateway};
+        
+        \node (ms1) [draw, rectangle, minimum width=2.5cm, minimum height=1cm, fill=green!10, right of=gateway, node distance=4cm, yshift=2cm] {MS Grupos};
+        \node (ms2) [draw, rectangle, minimum width=2.5cm, minimum height=1cm, fill=green!10, right of=gateway, node distance=4cm, yshift=0cm] {MS Tickets};
+        \node (ms3) [draw, rectangle, minimum width=2.5cm, minimum height=1cm, fill=green!10, right of=gateway, node distance=4cm, yshift=-2cm] {MS Usuarios};
+        
+        \node (db) [draw, cylinder, shape border rotate=90, aspect=0.25, minimum height=2.5cm, minimum width=2cm, fill=gray!20, right of=ms2, node distance=4cm] {DB (Supabase)};
+        
+        % Arrows
+        \draw[<->] (frontend) -- node[above] {HTTP/REST} (gateway);
+        \draw[->] (gateway) |- (ms1);
+        \draw[->] (gateway) -- (ms2);
+        \draw[->] (gateway) |- (ms3);
+        
+        \draw[<->] (ms1) -| (db);
+        \draw[<->] (ms2) -- (db);
+        \draw[<->] (ms3) -| (db);
+    \end{tikzpicture}
+    \caption{Diagrama Arquitectónico de Servicios: Comunicación entre componentes.}
+\end{figure}
+
+\section{Desarrollo de Vistas del Frontend (Angular)}
+La interfaz de usuario del sistema SIPNG representa la ventana principal mediante la cual los usuarios operan e interactúan. Se desarrolló utilizando Angular en su versión más moderna, promoviendo el uso exhaustivo de \textit{Signals} para el control reactivo del estado de la aplicación debido a su mayor rendimiento y su previsibilidad.
+
+\subsection{Vista de Selección de Grupos}
+La primera vista sustancial a la cual se enfrenta el usuario después del inicio de sesión es el Dashboard de Grupos. En esta pantalla, los usuarios pueden visualizar a los equipos o directorios de los que son partícipes. El componente (\texttt{GroupSelectionComponent}) gestiona una petición iterativa al backend, trayendo el listado filtrado de conjuntos. 
+
+\begin{figure}[H]
+    \centering
+    % Placeholder for the real image. Replace 'example-image' with your file
+    \rule{10cm}{5cm} % Caja simulando imagen
+    \caption{Interfaz de usuario para la selección de Grupos.}
+\end{figure}
+
+El proceso de desarrollo en esta vista integró un diseño visual tipo \textit{Glassmorphism}, requiriendo hojas de estilo avanzadas para generar transparencias interactivas sin comprometer la accesibilidad del texto.
+
+\subsection{Vista de Configuración y Gestión de Tickets}
+El módulo de gestión es uno de los apartados más exhaustivos. Se estructuró un sistema tipo \textit{Kanban} junto con visualizaciones de tabla donde cada ticket muestra atributos principales: Prioridad, Estado, Creador y Responsable. El \texttt{SettingsComponent} y \texttt{TicketDetailComponent} fueron dotados de diálogos integrados de PrimeNG que actúan de formularios dinámicos, conectando sus controladores directamente a llamadas al `HttpService`.
+
+\section{Desarrollo de los Microservicios Backend}
+En lugar de crear un único bloque de código cerrado, el Backend se implementó modularizado en distintas rutas y archivos independientes. Se eligió el framework Fastify por encima de configuraciones estándar como Express, dado que brinda un rendimiento sumamente superior al procesar transacciones HTTP masivas.
+
+\subsection{Microservicio de Grupos y Validaciones}
+El \texttt{Groups Service} expone funciones del tipo CRUD (Crear, Leer, Actualizar, Borrar). Para garantizar la integridad de todos los datos que atraviesan los nodos del servidor, cada \texttt{request} debe pasar forzosamente sobre un proceso de escrutinio definido por la librería Joi.
+
+Por ejemplo, al momento de solicitar al endpoint la creación de un nuevo grupo, se revisan los tipos de datos exactos: el nombre no debe ser vacío, la selección de iconos obedece a un listado específico y el color debe coincidir plenamente con la expresión regular Hexadecimal (\texttt{/\^{}\#[0-9A-F]\{6\}\$/i}). Las validaciones de esquema aíslan ataques de datos perniciosos de forma temprana.
+
+\subsection{Microservicio de Usuarios y Tickets}
+Del mismo modo, los servicios vinculados a Usuarios y Autenticación manejan protocolos de resguardo. El manejo de las credenciales obedece protocolos de hashing preventivo. Sobre los tickets, se implementó toda una jerarquía lógica de modificación, permitiendo que solamente los miembros partícipes de un grupo puedan manipular o visualizar en qué estado se encuentra un servicio o solicitud técnica.
+
+\section{Comunicación entre el Frontend y el Backend}
+Comprender el paradigma interactivo del sistema requiere mapear el ciclo de vida de una solicitud de datos (Query) originada por el cliente. La operativa se realiza de la siguiente forma:
+
+\begin{enumerate}
+    \item \textbf{Iniciación en Frontend:} El usuario hace un click sobre el botón "Guardar" en la interfaz. El controlador del componente Angular, utilizando un Signal reactivo de estado global (\texttt{AppStateService}), recupera la información inyectada.
+    \item \textbf{Envío HTTP:} El sistema transfiere esa petición usando el decorador de \texttt{HttpClient} de Angular apuntando a Vercel, o más específicamente al enlace proxy expuesto por Railway de la puerta de enlace (API Gateway).
+    \item \textbf{Validación de Ruta Backend:} Fastify intercepta la petición, invoca un middleware de autenticación (revisando la validez criptográfica de un token JWT) y posterior a eso valida los esquemas mediante Joi.
+    \item \textbf{Acción hacia Supabase:} Tras la aprobación en memoria, se despacha un `query()` hacia PostgreSQL en Supabase.
+    \item \textbf{Formateo de Respuesta:} Dado el retorno de los resultados provenientes del motor de base de datos, el backend aplica una interfaz de formateo central, \texttt{createResponse}. Esto inyecta \textit{OpCodes} únicos, un estatus HTTP estandarizado (ej: 200) y la carga útil real, retornándolo finalmente al navegador.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[node distance=2.5cm, auto, thick, scale=0.85, transform shape]
+        % Roles
+        \node (user) [draw, circle, minimum size=1.5cm, fill=black!5] {Usuario};
+        \node (browser) [draw, rectangle, minimum width=2cm, minimum height=4cm, fill=blue!10, right of=user, node distance=3cm] {Angular HTTP};
+        \node (node) [draw, rectangle, minimum width=2cm, minimum height=4cm, fill=green!10, right of=browser, node distance=4.5cm] {Node.js API};
+        \node (supa) [draw, cylinder, shape border rotate=90, aspect=0.25, minimum height=3cm, minimum width=1.5cm, fill=gray!20, right of=node, node distance=4.5cm] {Supabase};
+
+        % Sequnce lines
+        \draw[->] (user) -- node[above] {1. Submit} (browser);
+        \draw[->] (browser) -- node[above, align=center] {2. POST /groups\\(JSON)} (node);
+        \draw[->] (node) -- node[above, align=center] {3. SQL INSERT\\(pg-pool)} (supa);
+        
+        \draw[->, dashed] (supa) -- node[below, align=center] {4. Result Set} (node);
+        \draw[->, dashed] (node) -- node[below, align=center] {5. 201 Created\\OpCode: SxGP201} (browser);
+    \end{tikzpicture}
+    \caption{Ciclo de Vida de una Operación POST de un Microservicio.}
+\end{figure}
+
+
+\section{Gestión de Datos y Cloud Deployment}
+Dado que el desarrollo actual se apoya contundentemente en abstracciones nativas en la nube, todos los espacios de infraestructura fueron delegados como un Software como Servicio o Plataforma como Servicio.
+
+\subsection{Base de Datos a través de Supabase}
+La conexión y estructuración de tablas, triggers e índices descansa en Supabase. Para lograr interoperabilidad total, la base de datos de PostgreSQL se construyó configurada alrededor de una filosofía altamente normalizada conteniendo tablas \texttt{users}, \texttt{groups}, \texttt{tickets}, \texttt{group\_members} y control de roles que conectan al ecosistema a través del motor estandar de \texttt{pg}.
+
+\subsection{Despliegue del Backend usando Railway}
+Se construyó un orquestador dentro de Node.js capaz de iniciar los servidores en los puertos disponibles entregados a través de las variables de entorno \texttt{process.env.PORT}. Al momento de realizar cambios en el servidor alojado sobre GitHub, Railway lanza rutinas automáticas de Construcción y Despliegue, configurando Docker containers volátiles pero interconectados bajo su propia subred.
+
+\subsection{Entrega Continua Frontend Vercel}
+Al igual de forma sinérgica, la interconexión entre la rama \texttt{main} del repositorio para el cliente compila todos los ficheros de Typescript de Angular, optimizando pesos y tamaños, subiéndolos a Vercel con re-direcciones específicas configuradas en \texttt{vercel.json} para asegurar que las aplicaciones Single-Page Application funcionen perfectamente ante refrescos repentinos del enrutamiento.
+
+% (Nota: En el entorno real, cada imagen referenciada a lo largo del proceso se incluiría detallando capturas veraces tomadas del sistema final).
+
+% -------------------------
+% CONCLUSIONES
+% -------------------------
+\chapter{Conclusión}
+
+La construcción de un sistema bajo un paradigma de microservicios separado de un framework UI como Angular ha demostrado en la práctica la vasta viabilidad de crear entidades organizadas que se adapten a incrementos futuros de uso y lógica de negocios. Este enfoque, aunque introduce algo más de complejidad operacional en la puesta en marcha, soluciona en etapas tempranas temáticas abrumadoras de deuda técnica y bloqueos mutuos que suelen presentarse en equipos de control de versiones monolíticos. La capacidad de observar cada microservicio funcionando de manera autónoma provee una certeza profunda al momento de hacer diagnósticos y auditorías en general.
+
+El proyecto SIPNG sirve como un excelente ejemplo táctico y estratégico sobre la amalgama de tecnologías modernas. La delegación de la base de datos hacia Supabase ahorró considerables horas de ajustes y respaldos, mientras que los motores de despliegue como Railway para Node.js y Vercel para estáticos permitieron centrar el esfuerzo creativo exclusivamente en el diseño de pantallas, estandarización visual y algoritmos de negocios, reduciendo cuellos de botella enfocados de forma estricta en DevOps.
+
+De igual manera, es menester alabar los aportes funcionales del framework Angular por medio de Signals. Este cambio metodológico a un sistema de datos estrictamente reactivo redujo significativamente la curva de dificultad para manejar sincronización de perfiles, permisos y listados dinámicos con los flujos proveídos asíncronamente por el Backend. Cada bloque representó de forma fiel un pedazo de información controlable de forma precisa a través de la aplicación.
+
+A futuro, las perspectivas de fortalecimiento para estas integraciones tecnológicas dictan un panorama extremadamente próspero. La interconexión establecida con la escalabilidad del sistema augura poder extender el control de tickets con notificaciones en tiempo real (WebSockets), implementaciones adicionales relativas a machine learning para predicción de clasificación de errores o flujos avanzados tipo Single Sign-on, permitiendo consolidar el marco técnico como una plataforma omnicanal altamente resiliente, segura y confiable.
+
+% -------------------------
+% BIBLIOGRAFÍA
+% -------------------------
+\begin{thebibliography}{9}
+
+\bibitem{angularDocs} 
+Google. \textit{Angular Official Documentation - Introduction to Signals and Standalone Components}. [Online]. Disponible en: \url{https://angular.dev/}. (Accedido en abril de 2026).
+
+\bibitem{fastifyDocs} 
+Matteo Collina et al. \textit{Fastify Official Documentation: Fast and low overhead web framework, for Node.js}. [Online]. Disponible en: \url{https://fastify.dev/docs/latest/}. (Accedido en abril de 2026).
+
+\bibitem{supabaseDocs} 
+Supabase Inc. \textit{Supabase The Open Source Firebase alternative - Database Management \& Authentication}. [Online]. Disponible en: \url{https://supabase.com/docs}. (Accedido en abril de 2026).
+
+\end{thebibliography}
+
+% -------------------------
+% APÉNDICE / ANEXOS
+% -------------------------
+\appendix
+\chapter{Apéndice y Anexos}
+
+\section{Estructura Base del Repositorio}
+A continuación, se ilustra la organización base principal que se adaptó a lo largo de este proyecto, de clara separación jerárquica para la correcta identificación de ficheros correspondientes al área de trabajo específica Frontend y Backend.
+
+\begin{verbatim}
+/sipng
+  /backend
+    /src
+      /microservices
+         /groups
+         /tickets
+         /users
+      /db
+      /utils
+    Dockerfile
+  /src
+    /app
+      /pages
+        /auth
+        /groups
+        /tickets
+        /admin
+      /services
+\end{verbatim}
+
+\section{Capturas del Sistema}
+(En esta sección en el render final se insertarían capturas de pantalla de la página funcionando bajo localhost:4200 y el despliegue del log de Railway mostrando la base de datos Supabase insertada exitosamente).
+
+\end{document}

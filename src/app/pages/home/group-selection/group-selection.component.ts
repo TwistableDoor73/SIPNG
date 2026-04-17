@@ -124,16 +124,17 @@ export class GroupSelectionComponent implements OnInit {
   loadGroups() {
     this.httpService.getGroups().subscribe({
       next: (response) => {
-        const userGroups = this.state.currentUser()?.groups || [];
+        const userGroupIds = this.state.currentUser().groups || [];
+        const isSuperadmin = this.state.currentUser().role === 'superadmin';
         const mappedGroups = response.data
-          .filter((g: any) => userGroups.includes(g.uuid) || userGroups.includes(g.id))
           .map((g: any) => ({
             id: g.uuid || g.id,
             name: g.name,
             description: g.description || '',
             color: g.color || '#6366f1',
             icon: g.icon || 'pi-briefcase'
-          }));
+          }))
+          .filter((g: any) => isSuperadmin || userGroupIds.includes(g.id));
         this.groups.set(mappedGroups);
       },
       error: (error) => {
@@ -160,7 +161,12 @@ export class GroupSelectionComponent implements OnInit {
       icon: this.newGroup.icon
     }).subscribe({
       next: (response) => {
-        alert('Grupo creado exitosamente');
+        // Add the new group's UUID to the current user's groups
+        const newGroupId = response.data?.uuid || response.data?.id;
+        if (newGroupId) {
+          const currentGroups = this.state.currentUser().groups || [];
+          this.state.currentUser.update(u => ({ ...u, groups: [...currentGroups, newGroupId] }));
+        }
         this.displayCreateDialog = false;
         this.loadGroups();
       },

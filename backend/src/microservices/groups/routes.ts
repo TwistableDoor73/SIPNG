@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import pool from '../../db/connection.ts';
-import { createResponse, ApiError, OP_CODES } from '../../utils/response.ts';
-import { schemas, validateSchema } from '../../utils/schemas.ts';
+import pool from '../../db/connection.js';
+import { createResponse, ApiError, OP_CODES } from '../../utils/response.js';
+import { schemas, validateSchema } from '../../utils/schemas.js';
 
 const app = Fastify({
   logger: true,
@@ -94,6 +94,18 @@ app.post<{ Body: any }>('/groups', async (request, reply) => {
       [name, description || null, color || '#6366f1', icon || 'pi-briefcase']
     );
 
+    // Add creator as group member
+    const userId = request.headers['x-user-id'];
+    if (userId) {
+      const userResult = await pool.query('SELECT id FROM users WHERE uuid = $1', [userId]);
+      if (userResult.rows.length > 0) {
+        await pool.query(
+          'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)',
+          [result.rows[0].id, userResult.rows[0].id]
+        );
+      }
+    }
+
     reply.status(201).send(
       createResponse(201, 'SxGP201', result.rows[0])
     );
@@ -180,6 +192,106 @@ app.delete<{ Params: { id: string } }>('/groups/:id', async (request, reply) => 
 
     reply.send(
       createResponse(200, 'SxGP200', { deleted: true })
+    );
+  } catch (err: any) {
+    app.log.error(err);
+    if (err instanceof ApiError) {
+      reply.status(err.statusCode).send(
+        createResponse(err.statusCode, err.intOpCode, { message: err.message })
+      );
+    } else {
+      reply.status(500).send(
+        createResponse(500, OP_CODES.SxGN500, null)
+      );
+    }
+  }
+});
+
+// ADD member to group
+app.post<{ Params: { id: string }; Body: { userId: string } }>('/groups/:id/members', async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const { userId } = request.body;
+
+    if (!userId) {
+      throw new ApiError(400, 'SxGP400', 'userId is required');
+    }
+
+    // Find group by UUID
+    const groupResult = await pool.query('SELECT id FROM groups WHERE uuid = $1', [id]);
+    if (groupResult.rows.length === 0) {
+      throw new ApiError(404, 'SxGP404', 'Group not found');
+    }
+    const groupId = groupResult.rows[0].id;
+
+    // Find user by UUID
+    const userResult = await pool.query('SELECT id, uuid, name, email, role FROM users WHERE uuid = $1', [userId]);
+    if (userResult.rows.length === 0) {
+      throw new ApiError(404, 'SxGP404', 'User not found');
+    }
+    const user = userResult.rows[0];
+
+    // Check if already a member
+    const existing = await pool.query(
+      'SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, user.id]
+    );
+    if (existing.rows.length > 0) {
+      throw new ApiError(409, 'SxGP409', 'User is already a member of this group');
+    }
+
+    // Add member
+    await pool.query(
+      'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)',
+      [groupId, user.id]
+    );
+
+    reply.status(201).send(
+      createResponse(201, 'SxGP201', user)
+    );
+  } catch (err: any) {
+    app.log.error(err);
+    if (err instanceof ApiError) {
+      reply.status(err.statusCode).send(
+        createResponse(err.statusCode, err.intOpCode, { message: err.message })
+      );
+    } else {
+      reply.status(500).send(
+        createResponse(500, OP_CODES.SxGN500, null)
+      );
+    }
+  }
+});
+
+// REMOVE member from group
+app.delete<{ Params: { id: string; userId: string } }>('/groups/:id/members/:userId', async (request, reply) => {
+  try {
+    const { id, userId } = request.params;
+
+    // Find group by UUID
+    const groupResult = await pool.query('SELECT id FROM groups WHERE uuid = $1', [id]);
+    if (groupResult.rows.length === 0) {
+      throw new ApiError(404, 'SxGP404', 'Group not found');
+    }
+    const groupId = groupResult.rows[0].id;
+
+    // Find user by UUID
+    const userResult = await pool.query('SELECT id FROM users WHERE uuid = $1', [userId]);
+    if (userResult.rows.length === 0) {
+      throw new ApiError(404, 'SxGP404', 'User not found');
+    }
+
+    const result = await pool.query(
+      'DELETE FROM group_members WHERE group_id = $1 AND user_id = $2 RETURNING *',
+      [groupId, userResult.rows[0].id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new ApiError(404, 'SxGP404', 'User is not a member of this group');
+    }
+
+    reply.send(
+      createResponse(200, 'SxGP200', { removed: true })
     );
   } catch (err: any) {
     app.log.error(err);

@@ -1,11 +1,12 @@
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
-import { AppStateService, Ticket, TicketStatus, TicketPriority } from '../../../services/app-state.service';
+import { AppStateService, Ticket, TicketStatus, TicketPriority, STATUS_LABELS, PRIORITY_LABELS } from '../../../services/app-state.service';
+import { HttpService } from '../../../services/http.service';
 import { TicketDetailComponent } from '../detail/ticket-detail.component';
 
 @Component({
@@ -30,8 +31,8 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
       </div>
 
       <div class="kanban-board">
-          <!-- Pendiente -->
-          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Pendiente', $event)">
+          <!-- Pendiente (todo) -->
+          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('todo', $event)">
             <div class="column-header">
                <span><i class="pi pi-clock" style="color: #f59e0b"></i> Pendiente</span>
                <span class="col-count pending">{{pendingTickets().length}}</span>
@@ -44,8 +45,8 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
                   <span class="ticket-date text-xs"><i class="pi pi-calendar"></i> {{ticket.dueDate | date:'dd-MMM'}}</span>
                 </div>
                 <div class="ticket-header mt-auto">
-                  <span class="ticket-priority text-xs p-1" style="color: #ef4444; font-weight: 600" *ngIf="ticket.priority === 'Alta'">crítica</span>
-                  <span class="ticket-priority text-xs p-1 text-secondary font-semibold" *ngIf="ticket.priority !== 'Alta'">Sin asignar</span>
+                  <span class="ticket-priority text-xs p-1" style="color: #ef4444; font-weight: 600" *ngIf="ticket.priority === 'high' || ticket.priority === 'urgent'">{{priorityLabel(ticket.priority)}}</span>
+                  <span class="ticket-priority text-xs p-1 text-secondary font-semibold" *ngIf="ticket.priority !== 'high' && ticket.priority !== 'urgent'">{{priorityLabel(ticket.priority)}}</span>
                   <div class="ticket-assignee-avatar" [title]="ticket.assignedTo">{{ticket.assignedTo.charAt(0) | uppercase}}</div>
                 </div>
               </div>
@@ -54,8 +55,8 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
             </div>
           </div>
 
-          <!-- En Progreso -->
-          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('En Progreso', $event)">
+          <!-- En Progreso (in_progress) -->
+          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('in_progress', $event)">
             <div class="column-header">
                <span><i class="pi pi-circle" style="color: #3b82f6"></i> En Progreso</span>
                <span class="col-count in-progress">{{inProgressTickets().length}}</span>
@@ -68,7 +69,7 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
                   <span class="ticket-date text-xs"><i class="pi pi-calendar"></i> {{ticket.dueDate | date:'dd-MMM'}}</span>
                 </div>
                 <div class="ticket-header mt-auto">
-                  <span class="ticket-priority text-xs p-1" style="color: #f59e0b; font-weight: 600" *ngIf="ticket.priority === 'Alta'">alta</span>
+                  <span class="ticket-priority text-xs p-1" style="color: #f59e0b; font-weight: 600" *ngIf="ticket.priority === 'high' || ticket.priority === 'urgent'">{{priorityLabel(ticket.priority)}}</span>
                   <div class="ticket-assignee-avatar" [title]="ticket.assignedTo">{{ticket.assignedTo.charAt(0) | uppercase}}</div>
                 </div>
               </div>
@@ -77,8 +78,8 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
             </div>
           </div>
 
-          <!-- Revisión -->
-          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Revisión', $event)">
+          <!-- Revisión (in_review) -->
+          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('in_review', $event)">
             <div class="column-header">
                <span><i class="pi pi-eye" style="color: #a855f7"></i> Revisión</span>
                <span class="col-count review">{{reviewTickets().length}}</span>
@@ -91,7 +92,7 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
                   <span class="ticket-date text-xs"><i class="pi pi-calendar"></i> {{ticket.dueDate | date:'dd-MMM'}}</span>
                 </div>
                 <div class="ticket-header mt-auto">
-                  <span class="ticket-priority text-xs p-1" style="color: #f59e0b; font-weight: 600" *ngIf="ticket.priority === 'Alta'">alta</span>
+                  <span class="ticket-priority text-xs p-1" style="color: #f59e0b; font-weight: 600" *ngIf="ticket.priority === 'high' || ticket.priority === 'urgent'">{{priorityLabel(ticket.priority)}}</span>
                   <div class="ticket-assignee-avatar" [title]="ticket.assignedTo">{{ticket.assignedTo.charAt(0) | uppercase}}</div>
                 </div>
               </div>
@@ -100,8 +101,8 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
             </div>
           </div>
 
-          <!-- Hecho -->
-          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Hecho', $event)">
+          <!-- Hecho (done) -->
+          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('done', $event)">
             <div class="column-header">
                <span><i class="pi pi-check-circle" style="color: #10b981"></i> Hecho</span>
                <span class="col-count done">{{doneTickets().length}}</span>
@@ -114,23 +115,12 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
                   <span class="ticket-date text-xs"><i class="pi pi-calendar"></i> {{ticket.dueDate | date:'dd-MMM'}}</span>
                 </div>
                 <div class="ticket-header mt-auto">
-                  <span class="ticket-priority text-xs p-1" style="color: #10b981; font-weight: 600" *ngIf="ticket.priority !== 'Alta'">media</span>
+                  <span class="ticket-priority text-xs p-1" style="color: #10b981; font-weight: 600">{{priorityLabel(ticket.priority)}}</span>
                   <div class="ticket-assignee-avatar" [title]="ticket.assignedTo">{{ticket.assignedTo.charAt(0) | uppercase}}</div>
                 </div>
               </div>
               }
               @if (doneTickets().length === 0) { <div class="empty-drop"><small>Arrastra aquí</small></div> }
-            </div>
-          </div>
-
-          <!-- Bloqueado -->
-          <div class="kanban-column" (dragover)="onDragOver($event)" (drop)="onDrop('Bloqueado', $event)">
-            <div class="column-header">
-               <span><i class="pi pi-ban" style="color: #ef4444"></i> Bloqueado</span>
-               <span class="col-count blocked">0</span>
-            </div>
-            <div class="column-content">
-              <div class="empty-drop"><small>Arrastra aquí</small></div>
             </div>
           </div>
       </div>
@@ -152,7 +142,7 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
             <label for="status" class="font-semibold" style="font-weight: 600;">Estado Inicial</label>
             <select id="status" class="p-inputtext p-component w-full" [(ngModel)]="newTicket().status">
               @for(status of statusOptions; track status) {
-                <option [value]="status">{{status}}</option>
+                <option [value]="status">{{statusLabel(status)}}</option>
               }
             </select>
           </div>
@@ -161,7 +151,7 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
             <label for="priority" class="font-semibold" style="font-weight: 600;">Prioridad</label>
             <select id="priority" class="p-inputtext p-component w-full" [(ngModel)]="newTicket().priority">
               @for(priority of priorityOptions; track priority) {
-                <option [value]="priority">{{priority}}</option>
+                <option [value]="priority">{{priorityLabel(priority)}}</option>
               }
             </select>
           </div>
@@ -189,9 +179,10 @@ import { TicketDetailComponent } from '../detail/ticket-detail.component';
     </div>
   `
 })
-export class KanbanComponent {
+export class KanbanComponent implements OnInit {
   state = inject(AppStateService);
   router = inject(Router);
+  httpService = inject(HttpService);
 
   activeFilter = signal<'mis_tickets' | 'sin_asignar' | 'alta_prioridad' | null>(null);
 
@@ -204,31 +195,78 @@ export class KanbanComponent {
     } else if (filter === 'sin_asignar') {
       tickets = tickets.filter(t => !t.assignedTo || t.assignedTo === 'Sin asignar');
     } else if (filter === 'alta_prioridad') {
-      tickets = tickets.filter(t => t.priority === 'Alta');
+      tickets = tickets.filter(t => t.priority === 'high' || t.priority === 'urgent');
     }
     
     return tickets;
   });
 
-  pendingTickets = computed(() => this.filteredTickets().filter(t => t.status === 'Pendiente'));
-  inProgressTickets = computed(() => this.filteredTickets().filter(t => t.status === 'En Progreso'));
-  reviewTickets = computed(() => this.filteredTickets().filter(t => t.status === 'Revisión'));
-  doneTickets = computed(() => this.filteredTickets().filter(t => t.status === 'Hecho'));
+  pendingTickets = computed(() => this.filteredTickets().filter(t => t.status === 'todo'));
+  inProgressTickets = computed(() => this.filteredTickets().filter(t => t.status === 'in_progress'));
+  reviewTickets = computed(() => this.filteredTickets().filter(t => t.status === 'in_review'));
+  doneTickets = computed(() => this.filteredTickets().filter(t => t.status === 'done'));
 
   isCreateTicketDialogVisible = signal(false);
   
-  statusOptions: TicketStatus[] = ['Pendiente', 'En Progreso', 'Revisión', 'Hecho', 'Bloqueado'];
-  priorityOptions: TicketPriority[] = ['Baja', 'Media', 'Alta'];
+  statusOptions: TicketStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
+  priorityOptions: TicketPriority[] = ['low', 'medium', 'high', 'urgent'];
 
   newTicket = signal<Partial<Ticket>>({
     title: '',
     description: '',
-    status: 'Pendiente',
-    priority: 'Media',
+    status: 'todo',
+    priority: 'medium',
     assignedTo: ''
   });
 
   currentDraggedTicket = signal<Ticket | null>(null);
+
+  ngOnInit() {
+    this.loadTicketsFromBackend();
+    this.loadGroupMembers();
+  }
+
+  loadGroupMembers() {
+    const groupId = this.state.selectedGroup()?.id;
+    if (!groupId) return;
+    this.httpService.getGroup(groupId).subscribe({
+      next: (res) => {
+        if (res.data && (res.data as any).members) {
+          this.state.groupMembers.set((res.data as any).members);
+        }
+      },
+      error: (err) => console.error('Error loading group members:', err)
+    });
+  }
+
+  loadTicketsFromBackend() {
+    const groupId = this.state.selectedGroup()?.id;
+    if (!groupId) return;
+    this.httpService.getTickets(groupId).subscribe({
+      next: (response) => {
+        const mapped = response.data.map((t: any) => ({
+          id: t.uuid || t.id,
+          title: t.title,
+          description: t.description || '',
+          status: t.status as TicketStatus,
+          priority: t.priority as TicketPriority,
+          creator: t.creator_email || t.creator || '',
+          assignedTo: t.assigned_to_email || t.assignedTo || '',
+          assignedToUuid: t.assigned_to_uuid || '',
+          assignedToName: t.assigned_to_name || '',
+          groupId: groupId,
+          dueDate: t.due_date ? new Date(t.due_date) : null,
+          startDate: t.start_date ? new Date(t.start_date) : null,
+          endDate: t.end_date ? new Date(t.end_date) : null,
+          createdAt: t.created_at ? new Date(t.created_at) : new Date(),
+          comments: t.comments || [],
+          history: t.history || []
+        }));
+        this.state.allTickets.set(mapped);
+      },
+      error: (err) => console.error('Error loading tickets:', err)
+    });
+  }
 
   toggleFilter(filter: 'mis_tickets' | 'sin_asignar' | 'alta_prioridad') {
     if (this.activeFilter() === filter) {
@@ -255,20 +293,29 @@ export class KanbanComponent {
     }
     const ticket = this.currentDraggedTicket();
     if (ticket && ticket.status !== newStatus) {
-      this.state.allTickets.update(tickets =>
-        tickets.map(t => {
-          if (t.id === ticket.id) {
-            const updatedTicket = { ...t, status: newStatus };
-            updatedTicket.history = [...updatedTicket.history, {
-              author: this.state.email(),
-              action: `Cambió el estado a ${newStatus}`,
-              date: new Date()
-            }];
-            return updatedTicket;
-          }
-          return t;
-        })
-      );
+      // Update backend
+      this.httpService.updateTicket(ticket.id, { status: newStatus } as any).subscribe({
+        next: () => {
+          this.state.allTickets.update(tickets =>
+            tickets.map(t => {
+              if (t.id === ticket.id) {
+                const updatedTicket = { ...t, status: newStatus };
+                updatedTicket.history = [...updatedTicket.history, {
+                  author: this.state.email(),
+                  action: `Cambió el estado a ${STATUS_LABELS[newStatus]}`,
+                  date: new Date()
+                }];
+                return updatedTicket;
+              }
+              return t;
+            })
+          );
+        },
+        error: (err) => {
+          console.error('Error updating ticket status:', err);
+          alert('Error al actualizar el estado del ticket');
+        }
+      });
     }
     this.currentDraggedTicket.set(null);
   }
@@ -281,8 +328,8 @@ export class KanbanComponent {
     this.newTicket.set({
       title: '',
       description: '',
-      status: 'Pendiente',
-      priority: 'Media',
+      status: 'todo',
+      priority: 'medium',
       assignedTo: ''
     });
     this.isCreateTicketDialogVisible.set(true);
@@ -297,33 +344,36 @@ export class KanbanComponent {
     const t = this.newTicket();
     if (!t.title) return;
     
-    const newId = 'T-' + Math.floor(Math.random() * 10000);
-    const ticket: Ticket = {
-      id: newId,
+    const groupId = this.state.selectedGroup()?.id || '';
+    
+    this.httpService.createTicket({
       title: t.title,
       description: t.description || '',
-      status: t.status as TicketStatus || 'Pendiente',
-      priority: t.priority as TicketPriority || 'Media',
-      assignedTo: t.assignedTo || 'Sin asignar',
-      creator: this.state.email(),
-      groupId: this.state.selectedGroup()?.id || '',
-      comments: [],
-      history: [{
-        author: this.state.email(),
-        action: 'Creó el ticket',
-        date: new Date()
-      }],
-      createdAt: new Date(),
+      status: (t.status as string) || 'todo',
+      priority: (t.priority as string) || 'medium',
+      groupId: groupId,
       dueDate: new Date(new Date().setDate(new Date().getDate() + 7))
-    };
-    
-    this.state.allTickets.update(tickets => [...tickets, ticket]);
-    this.isCreateTicketDialogVisible.set(false);
-    
-    this.openTicketDetails(ticket);
+    } as any).subscribe({
+      next: (response) => {
+        this.isCreateTicketDialogVisible.set(false);
+        this.loadTicketsFromBackend();
+      },
+      error: (err) => {
+        console.error('Error creating ticket:', err);
+        alert('Error al crear el ticket: ' + (err.message || 'Intenta de nuevo'));
+      }
+    });
   }
   
   openTicketDetails(ticket: Ticket) {
-    alert(`Abre detalles del ticket ${ticket.id}`);
+    this.state.selectedTicketId.set(ticket.id);
+  }
+
+  statusLabel(status: TicketStatus): string {
+    return STATUS_LABELS[status] || status;
+  }
+
+  priorityLabel(priority: TicketPriority): string {
+    return PRIORITY_LABELS[priority] || priority;
   }
 }

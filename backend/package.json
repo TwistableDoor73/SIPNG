@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm --no-warnings=ExperimentalWarning src/index.ts",
+    "dev": "node --loader ts-node/esm --experimental-specifier-resolution=node --no-warnings=ExperimentalWarning src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc --skipLibCheck",
     "typecheck": "tsc --noEmit"

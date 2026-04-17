@@ -4,9 +4,9 @@ import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
 import axios from 'axios';
-import { verifyToken, type TokenPayload } from '../../utils/jwt.ts';
-import { createResponse, ApiError, OP_CODES } from '../../utils/response.ts';
-import { initializeDatabase } from '../../db/connection.ts';
+import { verifyToken, type TokenPayload } from '../../utils/jwt.js';
+import { createResponse, ApiError, OP_CODES } from '../../utils/response.js';
+import { initializeDatabase } from '../../db/connection.js';
 
 dotenv.config();
 
@@ -104,16 +104,22 @@ app.post('/auth/register', async (request, reply) => {
 
 // ==== PROTECTED ROUTES (Require authentication) ====
 
-// Get all users
-app.get('/users', async (request: any, reply) => {
+// Proxy all user requests
+app.all<{ Params: any }>('/users*', async (request: any, reply) => {
   try {
     const user = await authenticateRequest(request, reply);
     request.user = user;
     
-    const response = await axios.get(`${USER_SERVICE}/users`, {
+    const path = request.url.replace('/users', '');
+    const response = await axios({
+      method: request.method as any,
+      url: `${USER_SERVICE}/users${path}`,
       headers: {
         authorization: request.headers.authorization,
-      }
+        'content-type': request.headers['content-type'],
+        'x-user-id': user.userId,
+      },
+      data: request.body,
     });
     reply.send(response.data);
   } catch (error: any) {
@@ -147,6 +153,7 @@ app.all<{ Params: any }>('/tickets*', async (request: any, reply) => {
       headers: {
         authorization: request.headers.authorization,
         'content-type': request.headers['content-type'],
+        'x-user-id': user.userId,
       },
       data: request.body,
     });
@@ -183,6 +190,7 @@ app.all<{ Params: any }>('/groups*', async (request: any, reply) => {
       headers: {
         authorization: request.headers.authorization,
         'content-type': request.headers['content-type'],
+        'x-user-id': user.userId,
       },
       data: request.body,
     });

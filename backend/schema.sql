@@ -69,6 +69,8 @@ CREATE TABLE tickets (
   assigned_to_id INT REFERENCES users(id),
   group_id INT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   due_date DATE,
+  start_date DATE,
+  end_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

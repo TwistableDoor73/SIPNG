@@ -23,8 +23,22 @@ export interface User {
   phone?: string;
 }
 
-export type TicketStatus = 'Pendiente' | 'En Progreso' | 'Revisión' | 'Hecho' | 'Bloqueado';
-export type TicketPriority = 'Baja' | 'Media' | 'Alta';
+export type TicketStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export const STATUS_LABELS: Record<TicketStatus, string> = {
+  todo: 'Pendiente',
+  in_progress: 'En Progreso',
+  in_review: 'Revisión',
+  done: 'Hecho'
+};
+
+export const PRIORITY_LABELS: Record<TicketPriority, string> = {
+  low: 'Baja',
+  medium: 'Media',
+  high: 'Alta',
+  urgent: 'Urgente'
+};
 
 export interface TicketComment {
   author: string;
@@ -45,9 +59,13 @@ export interface Ticket {
   status: TicketStatus;
   creator: string;
   assignedTo: string;
+  assignedToUuid: string;
+  assignedToName: string;
   groupId: string;
   priority: TicketPriority;
-  dueDate: Date;
+  dueDate: Date | null;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   comments: TicketComment[];
   history: TicketHistory[];
@@ -83,13 +101,7 @@ export class AppStateService {
     { id: '3', name: 'UX & Diseño', description: 'Diseño de interfaces e ideación.', color: '#ec4899', icon: 'pi-palette' }
   ];
 
-  allTickets: WritableSignal<Ticket[]> = signal([
-    { id: 'T-01', title: 'Corregir bug de login', description: 'El usuario no puede pasar de la pantalla de inicio si su password tiene caracteres especiales.', status: 'En Progreso', creator: 'dev1@ejemplo.com', assignedTo: 'usuario@demo.com', groupId: '1', priority: 'Media', dueDate: new Date(2026, 3, 10), createdAt: new Date(2026, 3, 1), comments: [], history: [] },
-    { id: 'T-02', title: 'Actualizar dependencias', description: 'Subir versión de Node y Angular.', status: 'Hecho', creator: 'admin@demo.com', assignedTo: 'usuario@demo.com', groupId: '1', priority: 'Baja', dueDate: new Date(2026, 3, 5), createdAt: new Date(2026, 2, 28), comments: [], history: [] },
-    { id: 'T-03', title: 'Implementar oAuth', description: 'Integrar login con Google Workspace.', status: 'Pendiente', creator: 'admin@demo.com', assignedTo: 'dev@demo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 15), createdAt: new Date(2026, 3, 2), comments: [], history: [] },
-    { id: 'T-04', title: 'Error en despliegue', description: 'Pipeline fallando en la etapa de build.', status: 'Revisión', creator: 'usuario@demo.com', assignedTo: 'usuario@demo.com', groupId: '1', priority: 'Alta', dueDate: new Date(2026, 3, 12), createdAt: new Date(2026, 3, 5), comments: [], history: [] },
-    { id: 'T-05', title: 'Revisar tickets atrasados', description: 'Hacer una limpieza de los tickets sin atención.', status: 'Pendiente', creator: 'manager@ejemplo.com', assignedTo: 'soporte1@ejemplo.com', groupId: '2', priority: 'Media', dueDate: new Date(2026, 3, 20), createdAt: new Date(2026, 3, 10), comments: [], history: [] }
-  ]);
+  allTickets: WritableSignal<Ticket[]> = signal([]);
 
 
   // --- NAVIGATION STATE ---
@@ -109,11 +121,7 @@ export class AppStateService {
     return this.allTickets().find(t => t.id === id) || null;
   });
 
-  groupMembers = computed(() => {
-    const group = this.selectedGroup();
-    if (!group) return [];
-    return this.systemUsers().filter(u => u.groups.includes(group.id));
-  });
+  groupMembers: WritableSignal<any[]> = signal([]);
 
   myGroups = computed(() => {
     const userGroups = this.currentUser().groups || [];
@@ -124,10 +132,10 @@ export class AppStateService {
     return this.allTickets().filter(t => t.assignedTo === this.currentUser().email);
   });
 
-  myPendingCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'Pendiente').length);
-  myInProgressCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'En Progreso').length);
-  myDoneCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'Hecho').length);
-  myReviewCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'Revisión').length);
+  myPendingCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'todo').length);
+  myInProgressCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'in_progress').length);
+  myDoneCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'done').length);
+  myReviewCount = computed(() => this.myAllAssignedTickets().filter(t => t.status === 'in_review').length);
 
   // --- ACTIONS ---
   login() {
@@ -185,6 +193,11 @@ export class AppStateService {
   }
 
   hasPermission(perm: Permission | string): boolean {
+    // Superadmin tiene todos los permisos
+    if (this.currentUser().role === 'superadmin') {
+      return true;
+    }
+
     // Si hay un grupo seleccionado, verificar permisos específicos del grupo
     const selectedGroup = this.selectedGroup();
     if (selectedGroup) {
