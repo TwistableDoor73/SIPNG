@@ -1,17 +1,27 @@
-version: v7
-services:
-  api:
-    source: ./backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    envVars:
-      DATABASE_URL:
-        reference:
-          serviceId: postgres
-          variable: DATABASE_URL
-      JWT_SECRET:
-        reference:
-          serviceId: postgres
-          variable: JWT_SECRET
-  postgres:
-    type: postgres
+{
+  "version": "v7",
+  "services": {
+    "api": {
+      "source": "./backend",
+      "buildCommand": "npm install && npm run build",
+      "startCommand": "npm start",
+      "envVars": {
+        "DATABASE_URL": {
+          "reference": {
+            "serviceId": "postgres",
+            "variable": "DATABASE_URL"
+          }
+        },
+        "JWT_SECRET": {
+          "reference": {
+            "serviceId": "postgres",
+            "variable": "JWT_SECRET"
+          }
+        }
+      }
+    },
+    "postgres": {
+      "type": "postgres"
+    }
+  }
+}
